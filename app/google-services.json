@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "146083696717",
+    "project_id": "tecnisis-galeria",
+    "storage_bucket": "tecnisis-galeria.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:146083696717:android:4c6a192385b6ef0fe60c04",
+        "android_client_info": {
+          "package_name": "com.tecnisis.galeria"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD199516R6KOIQCQ3is8vcusoBePzj1GlU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
