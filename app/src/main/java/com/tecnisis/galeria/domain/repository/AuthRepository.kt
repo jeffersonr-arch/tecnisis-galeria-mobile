@@ -7,4 +7,5 @@ interface AuthRepository {
     suspend fun obtenerUsuarioActual(): Result<Usuario>
     fun haySesionActiva(): Boolean
     fun cerrarSesion()
+    suspend fun registrar(nombre: String, correo: String, contrasena: String): Result<Usuario>
 }

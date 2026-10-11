@@ -1,4 +1,6 @@
 package com.tecnisis.galeria.data.repository
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.FirebaseTooManyRequestsException
@@ -32,6 +34,20 @@ class AuthRepositoryImpl(
             leerUsuario(uid)
         }
 
+    override suspend fun registrar(nombre: String, correo: String, contrasena: String): Result<Usuario> =
+        ejecutarSeguro {
+            val uid = auth.createUserWithEmailAndPassword(correo, contrasena).await().user?.uid
+                ?: throw AuthError.Desconocido
+            db.collection(COLECCION_USUARIOS).document(uid).set(
+                mapOf(
+                    "nombre" to nombre,
+                    "correo" to correo,
+                    "rol" to Rol.POSTULANTE.valorFirestore
+                )
+            ).await()
+            Usuario(uid, nombre, correo, Rol.POSTULANTE)
+        }
+
     override fun haySesionActiva(): Boolean = auth.currentUser != null
 
     override fun cerrarSesion() = auth.signOut()
@@ -62,6 +78,8 @@ class AuthRepositoryImpl(
 
     private fun mapearError(e: Exception): AuthError = when (e) {
         is AuthError -> e
+        is FirebaseAuthWeakPasswordException -> AuthError.ContrasenaDebil
+        is FirebaseAuthUserCollisionException -> AuthError.CorreoEnUso
         is FirebaseAuthInvalidUserException ->
             if (e.errorCode == "ERROR_USER_DISABLED") AuthError.UsuarioDeshabilitado
             else AuthError.CredencialesInvalidas

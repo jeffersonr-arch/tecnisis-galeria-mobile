@@ -18,3 +18,8 @@ class HaySesionActivaUseCase(private val repo: AuthRepository) {
 class CerrarSesionUseCase(private val repo: AuthRepository) {
     operator fun invoke() = repo.cerrarSesion()
 }
+
+class RegistrarCuentaUseCase(private val repo: AuthRepository) {
+    suspend operator fun invoke(nombre: String, correo: String, contrasena: String) =
+        repo.registrar(nombre.trim(), correo.trim(), contrasena)
+}
