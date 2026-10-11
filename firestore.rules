@@ -1,8 +1,49 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+    function esDueno(uid) {
+      return autenticado() && request.auth.uid == uid;
+    }
+    function esAnfitrion() {
+      return autenticado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'anfitrion';
+    }
+
+    // Sprint 1 + HU02: cada uno lee su documento; al registrarse solo puede ser postulante
     match /usuarios/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if esDueno(uid);
+      allow create: if esDueno(uid) && request.resource.data.rol == 'postulante';
+      allow update, delete: if false; // el cambio de rol lo hace la Cloud Function (HU04)
+    }
+
+    // HU02: un documento por DNI para que no se repita
+    match /dnis/{dni} {
+      allow get: if autenticado();
+      allow create: if autenticado() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // HU02 (crear), HU03 (verificar) y HU04 (leer el Anfitrión)
+    match /postulaciones/{uid} {
+      allow read: if esDueno(uid) || esAnfitrion();
+      allow create: if esDueno(uid)
+        && request.resource.data.estado == 'pendiente_verificacion'
+        && getAfter(/databases/$(database)/documents/dnis/$(request.resource.data.dni)).data.uid == uid;
+      allow update: if esDueno(uid)
+        && resource.data.estado == 'pendiente_verificacion'
+        && request.resource.data.estado in ['verificada', 'observada']
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['estado', 'motivo', 'fechaVerificacion']);
+      allow delete: if false;
+    }
+
+    // HU04 y HU05: lo crea la Cloud Function; el socio solo lo lee
+    match /socios/{uid} {
+      allow read: if esDueno(uid) || esAnfitrion();
       allow write: if false;
     }
   }
