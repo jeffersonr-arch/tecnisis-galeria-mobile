@@ -1,27 +1,67 @@
 package com.tecnisis.galeria.di
 
+import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import com.tecnisis.galeria.data.repository.AuthRepositoryImpl
+import com.tecnisis.galeria.data.repository.PostulacionRepositoryImpl
 import com.tecnisis.galeria.domain.repository.AuthRepository
+import com.tecnisis.galeria.domain.repository.PostulacionRepository
+import com.tecnisis.galeria.domain.repository.VerificacionScheduler
 import com.tecnisis.galeria.domain.usecase.CerrarSesionUseCase
+import com.tecnisis.galeria.domain.usecase.EnviarPostulacionUseCase
 import com.tecnisis.galeria.domain.usecase.HaySesionActivaUseCase
 import com.tecnisis.galeria.domain.usecase.IniciarSesionUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarMiPostulacionUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarPostulacionesPorEstadoUseCase
+import com.tecnisis.galeria.domain.usecase.ObtenerPostulacionUseCase
 import com.tecnisis.galeria.domain.usecase.ObtenerUsuarioActualUseCase
+import com.tecnisis.galeria.domain.usecase.RegistrarCuentaUseCase
+import com.tecnisis.galeria.domain.usecase.ResolverPostulacionUseCase
 
 interface AppContainer {
+    // Sprint 1
     val iniciarSesion: IniciarSesionUseCase
     val obtenerUsuarioActual: ObtenerUsuarioActualUseCase
     val haySesionActiva: HaySesionActivaUseCase
     val cerrarSesion: CerrarSesionUseCase
+    // Sprint 2
+    val registrarCuenta: RegistrarCuentaUseCase
+    val enviarPostulacion: EnviarPostulacionUseCase
+    val observarMiPostulacion: ObservarMiPostulacionUseCase
+    val observarPostulacionesPorEstado: ObservarPostulacionesPorEstadoUseCase
+    val obtenerPostulacion: ObtenerPostulacionUseCase
+    val resolverPostulacion: ResolverPostulacionUseCase
 }
 
-class DefaultAppContainer : AppContainer {
-    private val authRepository: AuthRepository by lazy {
-        AuthRepositoryImpl(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance())
+class DefaultAppContainer(private val contexto: Context) : AppContainer {
+
+    private val auth by lazy { FirebaseAuth.getInstance() }
+    private val db by lazy { FirebaseFirestore.getInstance() }
+    private val functions by lazy { FirebaseFunctions.getInstance("southamerica-east1") }
+
+    private val authRepository: AuthRepository by lazy { AuthRepositoryImpl(auth, db) }
+    private val postulacionRepository: PostulacionRepository by lazy {
+        PostulacionRepositoryImpl(auth, db, functions)
     }
+
+    // Provisional: en la HU03 se reemplaza por el que usa WorkManager
+    private val verificacionScheduler: VerificacionScheduler by lazy { VerificacionScheduler { } }
+
     override val iniciarSesion by lazy { IniciarSesionUseCase(authRepository) }
     override val obtenerUsuarioActual by lazy { ObtenerUsuarioActualUseCase(authRepository) }
     override val haySesionActiva by lazy { HaySesionActivaUseCase(authRepository) }
     override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository) }
+
+    override val registrarCuenta by lazy { RegistrarCuentaUseCase(authRepository) }
+    override val enviarPostulacion by lazy {
+        EnviarPostulacionUseCase(postulacionRepository, verificacionScheduler)
+    }
+    override val observarMiPostulacion by lazy { ObservarMiPostulacionUseCase(postulacionRepository) }
+    override val observarPostulacionesPorEstado by lazy {
+        ObservarPostulacionesPorEstadoUseCase(postulacionRepository)
+    }
+    override val obtenerPostulacion by lazy { ObtenerPostulacionUseCase(postulacionRepository) }
+    override val resolverPostulacion by lazy { ResolverPostulacionUseCase(postulacionRepository) }
 }
