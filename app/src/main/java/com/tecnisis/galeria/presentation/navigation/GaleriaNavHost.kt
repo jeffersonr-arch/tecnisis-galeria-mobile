@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.tecnisis.galeria.domain.model.Rol
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
+import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
@@ -52,10 +53,20 @@ fun GaleriaNavHost(navController: NavHostController = rememberNavController()) {
                 InicioRolRoute(rol = rol, onSesionCerrada = irAlLogin, onNavegar = navegarSiExiste)
             }
         }
-        // HU02
+        // HU02: al enviar, va directo a ver el estado
         composable(Pantalla.Postulacion.name) {
-            PostulacionRoute(onEnviada = volver, onVolver = volver)
+            PostulacionRoute(
+                onEnviada = {
+                    navController.navigate(Pantalla.EstadoPostulacion.name) {
+                        popUpTo(Pantalla.Postulacion.name) { inclusive = true }
+                    }
+                },
+                onVolver = volver
+            )
         }
-        // HU03, HU04 y HU05: aquí se agregaran las pantallas
+        // HU03
+        composable(Pantalla.EstadoPostulacion.name) {
+            EstadoPostulacionRoute(onVolver = volver)
+        }
     }
 }
