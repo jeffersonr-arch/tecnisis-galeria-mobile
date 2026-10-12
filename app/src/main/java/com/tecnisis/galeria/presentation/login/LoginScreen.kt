@@ -1,5 +1,6 @@
 package com.tecnisis.galeria.presentation.login
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,7 +40,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -56,10 +57,11 @@ import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 @Composable
 fun LoginRoute(
     onLoginExitoso: (Usuario) -> Unit,
+    onCrearCuenta: () -> Unit,
     viewModel: LoginViewModel = viewModel(factory = LoginViewModel.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val activity = LocalContext.current as FragmentActivity
+    val activity =  LocalActivity.current as FragmentActivity
     val biometria = remember(activity) { BiometricAuthenticator(activity) }
 
     LaunchedEffect(Unit) { viewModel.configurarHuella(biometria.estaDisponible()) }
@@ -72,6 +74,7 @@ fun LoginRoute(
         onCorreoChange = viewModel::onCorreoChange,
         onContrasenaChange = viewModel::onContrasenaChange,
         onIngresarClick = viewModel::onIngresarClick,
+        onCrearCuentaClick = onCrearCuenta,
         onHuellaClick = {
             biometria.autenticar(
                 onExito = viewModel::onHuellaExitosa,
@@ -88,6 +91,7 @@ fun LoginScreen(
     onContrasenaChange: (String) -> Unit,
     onIngresarClick: () -> Unit,
     onHuellaClick: () -> Unit,
+    onCrearCuentaClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var mostrarContrasena by rememberSaveable { mutableStateOf(false) }
@@ -200,6 +204,10 @@ fun LoginScreen(
                     Text("Ingresar con huella")
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onCrearCuentaClick, enabled = !uiState.cargando) {
+                Text("¿Quieres ser socio? Crea tu cuenta")
+            }
         }
     }
 }
@@ -213,7 +221,8 @@ private fun LoginScreenPreview() {
             onCorreoChange = {},
             onContrasenaChange = {},
             onIngresarClick = {},
-            onHuellaClick = {}
+            onHuellaClick = {},
+            onCrearCuentaClick = {}
         )
     }
 }
