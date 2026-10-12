@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tecnisis.galeria.domain.model.Rol
 import com.tecnisis.galeria.domain.model.Usuario
+import com.tecnisis.galeria.presentation.navigation.Pantalla
 import com.tecnisis.galeria.presentation.navigation.funciones
 import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 
@@ -37,6 +38,7 @@ import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 fun InicioRolRoute(
     rol: Rol,
     onSesionCerrada: () -> Unit,
+    onNavegar: (Pantalla) -> Unit = {},
     viewModel: InicioViewModel = viewModel(factory = InicioViewModel.Factory)
 ) {
     val estado by viewModel.estado.collectAsState()
@@ -55,14 +57,15 @@ fun InicioRolRoute(
             onCerrarSesion = {
                 viewModel.onCerrarSesion()
                 onSesionCerrada()
-            }
+            },
+            onNavegar = onNavegar
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InicioRolScreen(usuario: Usuario, onCerrarSesion: () -> Unit) {
+fun InicioRolScreen(usuario: Usuario, onCerrarSesion: () -> Unit, onNavegar: (Pantalla) -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,11 +94,18 @@ fun InicioRolScreen(usuario: Usuario, onCerrarSesion: () -> Unit) {
             Text("Tus funciones", style = MaterialTheme.typography.titleMedium)
             usuario.rol.funciones().forEach { funcion ->
                 Card(
-                    Modifier
+                    onClick = { funcion.destino?.let(onNavegar) },
+                    enabled = funcion.destino != null,
+                    modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp)
                 ) {
-                    Text(funcion, Modifier.padding(16.dp))
+                    Column(Modifier.padding(16.dp)) {
+                        Text(funcion.titulo, style = MaterialTheme.typography.titleSmall)
+                        if (funcion.destino == null) {
+                            Text("Próximamente", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
             }
         }
@@ -107,8 +117,9 @@ fun InicioRolScreen(usuario: Usuario, onCerrarSesion: () -> Unit) {
 private fun InicioRolScreenPreview() {
     TecnisisGaleriaTheme {
         InicioRolScreen(
-            usuario = Usuario("1", "Gerente Prueba", "gerente@tecnisis.pe", Rol.GERENTE),
-            onCerrarSesion = {}
+            usuario = Usuario("1", "Postulante Prueba", "postulante@tecnisis.pe", Rol.POSTULANTE),
+            onCerrarSesion = {},
+            onNavegar = {}
         )
     }
 }

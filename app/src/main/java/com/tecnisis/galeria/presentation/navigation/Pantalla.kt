@@ -3,8 +3,13 @@ package com.tecnisis.galeria.presentation.navigation
 import com.tecnisis.galeria.domain.model.Rol
 
 enum class Pantalla {
-    Login, Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente
+    Login, Registro,
+    Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente,
+    Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion, PerfilSocio
 }
+
+/** Una tarjeta del inicio; si destino es null, la función llega en un sprint futuro. */
+data class FuncionRol(val titulo: String, val destino: Pantalla? = null)
 
 fun Rol.pantallaInicio(): Pantalla = when (this) {
     Rol.POSTULANTE -> Pantalla.Postulante
@@ -15,11 +20,23 @@ fun Rol.pantallaInicio(): Pantalla = when (this) {
     Rol.GERENTE -> Pantalla.Gerente
 }
 
-fun Rol.funciones(): List<String> = when (this) {
-    Rol.POSTULANTE -> listOf("Registrar mi postulación")
-    Rol.SOCIO_ACTIVO -> listOf("Mi perfil de socio", "Registrar obras")
-    Rol.ANFITRION -> listOf("Revisar postulaciones", "Aprobar solicitudes de exhibición")
-    Rol.ESPECIALISTA_ARTE -> listOf("Obras asignadas para evaluar")
-    Rol.ESPECIALISTA_VENTAS -> listOf("Obras pendientes de tasación")
-    Rol.GERENTE -> listOf("Dashboard de solicitudes", "Proyección económica")
+fun Rol.funciones(): List<FuncionRol> = when (this) {
+    Rol.POSTULANTE -> listOf(
+        FuncionRol("Completar mi postulación", Pantalla.Postulacion),
+        FuncionRol("Estado de mi postulación", Pantalla.EstadoPostulacion)
+    )
+    Rol.SOCIO_ACTIVO -> listOf(
+        FuncionRol("Mi perfil de socio", Pantalla.PerfilSocio),
+        FuncionRol("Registrar obras")
+    )
+    Rol.ANFITRION -> listOf(
+        FuncionRol("Revisar postulaciones", Pantalla.Bandeja),
+        FuncionRol("Aprobar solicitudes de exhibición")
+    )
+    Rol.ESPECIALISTA_ARTE -> listOf(FuncionRol("Obras asignadas para evaluar"))
+    Rol.ESPECIALISTA_VENTAS -> listOf(FuncionRol("Obras pendientes de tasación"))
+    Rol.GERENTE -> listOf(
+        FuncionRol("Dashboard de solicitudes"),
+        FuncionRol("Proyección económica")
+    )
 }
