@@ -72,3 +72,21 @@ fun BotonPrincipal(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BarraConVolver(titulo: String, onVolver: () -> Unit) {
+    TopAppBar(
+        title = { Text(titulo) },
+        navigationIcon = {
+            IconButton(onClick = onVolver) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+        )
+    )
+}
