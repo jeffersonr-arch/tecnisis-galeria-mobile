@@ -48,3 +48,27 @@ fun CampoTexto(
         modifier = modifier.fillMaxWidth()
     )
 }
+
+@Composable
+fun BotonPrincipal(
+    texto: String,
+    cargando: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        enabled = !cargando,
+        modifier = modifier.fillMaxWidth().height(52.dp)
+    ) {
+        if (cargando) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+        } else {
+            Text(texto)
+        }
+    }
+}
