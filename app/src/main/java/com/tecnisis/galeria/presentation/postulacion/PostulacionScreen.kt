@@ -1,5 +1,9 @@
 package com.tecnisis.galeria.presentation.postulacion
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,14 +18,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
 import com.tecnisis.galeria.presentation.componentes.BotonPrincipal
 import com.tecnisis.galeria.presentation.componentes.CampoTexto
 import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
+import com.tecnisis.galeria.presentation.notificaciones.Notificaciones
 
 @Composable
 fun PostulacionScreen(
@@ -108,6 +118,38 @@ fun PostulacionScreen(
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+fun PostulacionRoute(
+    onEnviada: () -> Unit,
+    onVolver: () -> Unit,
+    viewModel: PostulacionViewModel = viewModel(factory = PostulacionViewModel.Factory)
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val contexto = LocalContext.current
+    val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    // Pide el permiso de notificaciones al abrir el formulario (Android 13+)
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pedirPermiso.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    LaunchedEffect(uiState.enviada) {
+        if (uiState.enviada) {
+            Notificaciones.mostrarPostulacionRecibida(contexto)
+            onEnviada()
+        }
+    }
+
+    PostulacionScreen(
+        uiState = uiState,
+        onCambio = viewModel::onCambio,
+        onEnviarClick = viewModel::onEnviarClick,
+        onVolver = onVolver
+    )
 }
 
 @Preview(showBackground = true)
