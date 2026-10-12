@@ -1,5 +1,11 @@
 package com.tecnisis.galeria.di
 
+import com.tecnisis.galeria.BuildConfig
+import com.tecnisis.galeria.data.remote.RetrofitDni
+import com.tecnisis.galeria.data.repository.ConsultaDniMock
+import com.tecnisis.galeria.data.repository.ConsultaDniRepositoryImpl
+import com.tecnisis.galeria.domain.repository.ConsultaDniRepository
+import com.tecnisis.galeria.domain.usecase.VerificarPostulacionUseCase
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -33,6 +39,8 @@ interface AppContainer {
     val observarPostulacionesPorEstado: ObservarPostulacionesPorEstadoUseCase
     val obtenerPostulacion: ObtenerPostulacionUseCase
     val resolverPostulacion: ResolverPostulacionUseCase
+
+    val verificarPostulacion: VerificarPostulacionUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -44,6 +52,11 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     private val authRepository: AuthRepository by lazy { AuthRepositoryImpl(auth, db) }
     private val postulacionRepository: PostulacionRepository by lazy {
         PostulacionRepositoryImpl(auth, db, functions)
+    }
+    // Con DNI_API_MOCK=true usa la API simulada; con falso, la real de Decolecta
+    private val consultaDni: ConsultaDniRepository by lazy {
+        if (BuildConfig.DNI_API_MOCK) ConsultaDniMock()
+        else ConsultaDniRepositoryImpl(RetrofitDni.crearApi(), BuildConfig.DNI_API_TOKEN)
     }
 
     // Provisional: en la HU03 se reemplaza por el que usa WorkManager
@@ -64,4 +77,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     }
     override val obtenerPostulacion by lazy { ObtenerPostulacionUseCase(postulacionRepository) }
     override val resolverPostulacion by lazy { ResolverPostulacionUseCase(postulacionRepository) }
+    override val verificarPostulacion by lazy {
+        VerificarPostulacionUseCase(postulacionRepository, consultaDni)
+    }
 }
