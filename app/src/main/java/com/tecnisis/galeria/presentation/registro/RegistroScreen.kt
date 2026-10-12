@@ -15,6 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
 import com.tecnisis.galeria.presentation.componentes.BotonPrincipal
 import com.tecnisis.galeria.presentation.componentes.CampoTexto
@@ -75,6 +79,29 @@ fun RegistroScreen(
             BotonPrincipal(texto = "Crear cuenta", cargando = uiState.cargando, onClick = onRegistrarClick)
         }
     }
+}
+
+@Composable
+fun RegistroRoute(
+    onRegistrado: () -> Unit,
+    onVolver: () -> Unit,
+    viewModel: RegistroViewModel = viewModel(factory = RegistroViewModel.Factory)
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState.registrado) {
+        if (uiState.registrado) onRegistrado()
+    }
+
+    RegistroScreen(
+        uiState = uiState,
+        onNombreChange = viewModel::onNombreChange,
+        onCorreoChange = viewModel::onCorreoChange,
+        onContrasenaChange = viewModel::onContrasenaChange,
+        onConfirmacionChange = viewModel::onConfirmacionChange,
+        onRegistrarClick = viewModel::onRegistrarClick,
+        onVolver = onVolver
+    )
 }
 
 @Preview(showBackground = true)
