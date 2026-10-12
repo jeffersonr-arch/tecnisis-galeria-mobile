@@ -1,5 +1,6 @@
 package com.tecnisis.galeria.di
 
+import com.tecnisis.galeria.data.work.VerificacionSchedulerImpl
 import com.tecnisis.galeria.BuildConfig
 import com.tecnisis.galeria.data.remote.RetrofitDni
 import com.tecnisis.galeria.data.repository.ConsultaDniMock
@@ -59,8 +60,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
         else ConsultaDniRepositoryImpl(RetrofitDni.crearApi(), BuildConfig.DNI_API_TOKEN)
     }
 
-    // Provisional: en la HU03 se reemplaza por el que usa WorkManager
-    private val verificacionScheduler: VerificacionScheduler by lazy { VerificacionScheduler { } }
+    private val verificacionScheduler: VerificacionScheduler by lazy { VerificacionSchedulerImpl(contexto) }
 
     override val iniciarSesion by lazy { IniciarSesionUseCase(authRepository) }
     override val obtenerUsuarioActual by lazy { ObtenerUsuarioActualUseCase(authRepository) }
