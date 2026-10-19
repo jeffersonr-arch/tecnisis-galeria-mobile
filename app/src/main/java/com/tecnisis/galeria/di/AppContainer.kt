@@ -30,6 +30,7 @@ import com.tecnisis.galeria.data.local.PreferenciasRepositoryImpl
 import com.tecnisis.galeria.domain.repository.PreferenciasRepository
 import com.tecnisis.galeria.domain.usecase.GuardarModoTemaUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarModoTemaUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarUsuarioActualUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -50,6 +51,8 @@ interface AppContainer {
     // Sprint 2 · HU14
     val observarModoTema: ObservarModoTemaUseCase
     val guardarModoTema: GuardarModoTemaUseCase
+
+    val observarUsuarioActual: ObservarUsuarioActualUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -95,4 +98,5 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
 
     override val observarModoTema by lazy { ObservarModoTemaUseCase(preferenciasRepository) }
     override val guardarModoTema by lazy { GuardarModoTemaUseCase(preferenciasRepository) }
+    override val observarUsuarioActual by lazy { ObservarUsuarioActualUseCase(authRepository) }
 }
