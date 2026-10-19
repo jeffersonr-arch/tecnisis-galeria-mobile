@@ -1,13 +1,13 @@
 package com.tecnisis.galeria.presentation.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.outlined.AssignmentTurnedIn
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DonutLarge
-import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Inbox
@@ -41,7 +41,7 @@ fun Rol.destinos(): List<Destino> = when (this) {
     )
     Rol.ESPECIALISTA_ARTE -> listOf(
         Destino("Inicio", Icons.Outlined.Home, Pantalla.EspecialistaArte),
-        Destino("Asignadas", Icons.Outlined.FactCheck, Pantalla.ObrasAsignadas), // HU08
+        Destino("Asignadas", Icons.AutoMirrored.Outlined.FactCheck, Pantalla.ObrasAsignadas), // HU08
         Destino("Rechazos", Icons.Outlined.Block, Pantalla.Rechazos),            // HU09
         DestinoPerfil
     )

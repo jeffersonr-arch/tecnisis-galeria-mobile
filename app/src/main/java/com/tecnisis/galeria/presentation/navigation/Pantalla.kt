@@ -1,11 +1,11 @@
 package com.tecnisis.galeria.presentation.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DonutLarge
-import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Schedule
@@ -54,7 +54,9 @@ fun Rol.funciones(): List<FuncionRol> = when (this) {
         FuncionRol("Aprobar solicitudes de exhibición", null, "Llega en el Sprint 3 (HU07)", Icons.Outlined.Description)
     )
     Rol.ESPECIALISTA_ARTE -> listOf(
-        FuncionRol("Obras asignadas para evaluar", null, "Llega en el Sprint 4 (HU08)", Icons.Outlined.FactCheck)
+        FuncionRol("Obras asignadas para evaluar", null, "Llega en el Sprint 4 (HU08)",
+            Icons.AutoMirrored.Outlined.FactCheck
+        )
     )
     Rol.ESPECIALISTA_VENTAS -> listOf(
         FuncionRol("Obras pendientes de tasación", null, "Llega en el Sprint 5 (HU10)", Icons.Outlined.Sell)
