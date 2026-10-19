@@ -26,6 +26,10 @@ import com.tecnisis.galeria.domain.usecase.ObtenerPostulacionUseCase
 import com.tecnisis.galeria.domain.usecase.ObtenerUsuarioActualUseCase
 import com.tecnisis.galeria.domain.usecase.RegistrarCuentaUseCase
 import com.tecnisis.galeria.domain.usecase.ResolverPostulacionUseCase
+import com.tecnisis.galeria.data.local.PreferenciasRepositoryImpl
+import com.tecnisis.galeria.domain.repository.PreferenciasRepository
+import com.tecnisis.galeria.domain.usecase.GuardarModoTemaUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarModoTemaUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -42,6 +46,10 @@ interface AppContainer {
     val resolverPostulacion: ResolverPostulacionUseCase
 
     val verificarPostulacion: VerificarPostulacionUseCase
+
+    // Sprint 2 · HU14
+    val observarModoTema: ObservarModoTemaUseCase
+    val guardarModoTema: GuardarModoTemaUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -80,4 +88,11 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val verificarPostulacion by lazy {
         VerificarPostulacionUseCase(postulacionRepository, consultaDni)
     }
+
+    private val preferenciasRepository: PreferenciasRepository by lazy {
+        PreferenciasRepositoryImpl(contexto)
+    }
+
+    override val observarModoTema by lazy { ObservarModoTemaUseCase(preferenciasRepository) }
+    override val guardarModoTema by lazy { GuardarModoTemaUseCase(preferenciasRepository) }
 }
