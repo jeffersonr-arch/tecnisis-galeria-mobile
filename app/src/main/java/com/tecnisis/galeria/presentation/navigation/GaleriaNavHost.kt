@@ -24,6 +24,7 @@ import com.tecnisis.galeria.presentation.componentes.OpcionBarra
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
+import com.tecnisis.galeria.presentation.perfil.PerfilRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
 
@@ -131,13 +132,12 @@ fun GaleriaNavHost(
                     onVolver = volver
                 )
             }
-
-            // HU03
             composable(Pantalla.EstadoPostulacion.name) {
-                EstadoPostulacionRoute(onVolver = volver)
+                EstadoPostulacionRoute(onCompletar = { navController.navigate(Pantalla.Postulacion.name) })
             }
-
-            // HU04, HU05 y HU14 (Perfil): aquí se agregan sus pantallas
+            composable(Pantalla.Perfil.name) {
+                PerfilRoute(onSesionCerrada = irAlLogin)
+            }
         }
     }
 }

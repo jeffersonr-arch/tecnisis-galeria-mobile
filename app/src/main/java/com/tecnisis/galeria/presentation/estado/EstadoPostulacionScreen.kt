@@ -48,7 +48,6 @@ import com.tecnisis.galeria.presentation.theme.galeria
 
 @Composable
 fun EstadoPostulacionRoute(
-    onVolver: () -> Unit = {},
     onCompletar: () -> Unit = {},
     viewModel: EstadoPostulacionViewModel = viewModel(factory = EstadoPostulacionViewModel.Factory)
 ) {
