@@ -15,6 +15,10 @@ import com.tecnisis.galeria.domain.model.Usuario
 import com.tecnisis.galeria.domain.repository.AuthRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class AuthRepositoryImpl(
     private val auth: FirebaseAuth,
@@ -51,6 +55,45 @@ class AuthRepositoryImpl(
     override fun haySesionActiva(): Boolean = auth.currentUser != null
 
     override fun cerrarSesion() = auth.signOut()
+
+    override fun observarUsuarioActual(): Flow<Usuario?> = callbackFlow {
+        var registroUsuario: ListenerRegistration? = null
+
+        // 1) Escucha los inicios y cierres de sesión
+        val escuchaSesion = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            registroUsuario?.remove()
+            registroUsuario = null
+            val uid = firebaseAuth.currentUser?.uid
+            if (uid == null) {
+                trySend(null)
+                return@AuthStateListener
+            }
+            // 2) Con sesión, escucha el documento del usuario (ahí está su rol)
+            registroUsuario = db.collection(COLECCION_USUARIOS).document(uid)
+                .addSnapshotListener { doc, error ->
+                    if (error != null) return@addSnapshotListener // sin red: se queda el último valor
+                    val rol = Rol.desdeFirestore(doc?.getString("rol"))
+                    if (doc == null || !doc.exists() || rol == null) {
+                        trySend(null)
+                        return@addSnapshotListener
+                    }
+                    trySend(
+                        Usuario(
+                            uid = uid,
+                            nombre = doc.getString("nombre").orEmpty(),
+                            correo = doc.getString("correo").orEmpty(),
+                            rol = rol
+                        )
+                    )
+                }
+        }
+
+        auth.addAuthStateListener(escuchaSesion)
+        awaitClose {
+            auth.removeAuthStateListener(escuchaSesion)
+            registroUsuario?.remove()
+        }
+    }
 
     private suspend fun leerUsuario(uid: String): Usuario {
         val doc = db.collection(COLECCION_USUARIOS).document(uid).get().await()
