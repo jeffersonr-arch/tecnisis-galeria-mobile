@@ -13,14 +13,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.navArgument
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tecnisis.galeria.domain.model.Rol
+import com.tecnisis.galeria.presentation.bandeja.BandejaRoute
 import com.tecnisis.galeria.presentation.componentes.BarraInferior
 import com.tecnisis.galeria.presentation.componentes.OpcionBarra
+import com.tecnisis.galeria.presentation.detalle.DetallePostulacionRoute
+import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
@@ -137,6 +142,19 @@ fun GaleriaNavHost(
             }
             composable(Pantalla.Perfil.name) {
                 PerfilRoute(onSesionCerrada = irAlLogin)
+            }
+            composable(Pantalla.Bandeja.name) {
+                BandejaRoute(
+                    onAbrir = { uid -> navController.navigate("${Pantalla.DetallePostulacion.name}/$uid") }
+                )
+            }
+            composable(
+                route = "${Pantalla.DetallePostulacion.name}/{${DetallePostulacionViewModel.ARG_UID}}",
+                arguments = listOf(
+                    navArgument(DetallePostulacionViewModel.ARG_UID) { type = NavType.StringType }
+                )
+            ) {
+                DetallePostulacionRoute(onVolver = volver)
             }
         }
     }
