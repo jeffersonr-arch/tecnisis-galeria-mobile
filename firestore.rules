@@ -27,7 +27,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // HU02 (crear), HU03 (verificar) y HU04 (leer el Anfitrión)
+    // HU02 (crear), HU03 (verificar) y HU04 (leer el Anfitrión; resolver lo hace la Cloud Function)
     match /postulaciones/{uid} {
       allow read: if esDueno(uid) || esAnfitrion();
       allow create: if esDueno(uid)
@@ -45,6 +45,10 @@ service cloud.firestore {
     match /socios/{uid} {
       allow read: if esDueno(uid) || esAnfitrion();
       allow write: if false;
+    }
+    // HU04: contador del número de socio (SOC-0001); solo lo usa la Cloud Function
+    match /contadores/{id} {
+      allow read, write: if false;
     }
   }
 }
