@@ -1,6 +1,8 @@
 package com.tecnisis.galeria.presentation.detalle
 
 import android.content.res.Configuration
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,28 +19,44 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tecnisis.galeria.domain.model.DecisionPostulacion
 import com.tecnisis.galeria.domain.model.EstadoPostulacion
 import com.tecnisis.galeria.domain.model.Postulacion
+import com.tecnisis.galeria.domain.model.decisionesPermitidas
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
+import com.tecnisis.galeria.presentation.componentes.BotonPrincipal
 import com.tecnisis.galeria.presentation.componentes.ChipEstado
 import com.tecnisis.galeria.presentation.componentes.TarjetaGaleria
 import com.tecnisis.galeria.presentation.componentes.TituloSeccion
@@ -55,20 +73,49 @@ fun DetallePostulacionRoute(
     viewModel: DetallePostulacionViewModel = viewModel(factory = DetallePostulacionViewModel.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    DetallePostulacionScreen(uiState = uiState, onVolver = onVolver, onReintentar = viewModel::cargar)
+    val contexto = LocalContext.current
+    val snackbar = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.aviso) {
+        val aviso = uiState.aviso ?: return@LaunchedEffect
+        if (uiState.resuelta) {
+            Toast.makeText(contexto, aviso, Toast.LENGTH_SHORT).show()
+            onVolver()
+        } else {
+            snackbar.showSnackbar(aviso)
+            viewModel.onAvisoMostrado()
+        }
+    }
+
+    DetallePostulacionScreen(
+        uiState = uiState,
+        snackbarHostState = snackbar,
+        onVolver = onVolver,
+        onReintentar = viewModel::cargar,
+        onAbrirDecision = viewModel::onAbrirDecision,
+        onMensajeChange = viewModel::onMensajeChange,
+        onConfirmar = viewModel::onConfirmarDecision,
+        onCancelar = viewModel::onCancelarDecision
+    )
 }
 
 @Composable
 fun DetallePostulacionScreen(
     uiState: DetallePostulacionUiState,
+    snackbarHostState: SnackbarHostState,
     onVolver: () -> Unit,
-    onReintentar: () -> Unit
+    onReintentar: () -> Unit,
+    onAbrirDecision: (DecisionPostulacion) -> Unit,
+    onMensajeChange: (String) -> Unit,
+    onConfirmar: () -> Unit,
+    onCancelar: () -> Unit
 ) {
     val c = MaterialTheme.colorScheme
 
     Scaffold(
         containerColor = c.background,
-        topBar = { BarraConVolver("Postulación", onVolver) }
+        topBar = { BarraConVolver("Postulación", onVolver) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         val p = uiState.postulacion
         when {
@@ -116,11 +163,38 @@ fun DetallePostulacionScreen(
                     )
                 }
 
+                if (p.mensajeAnfitrion != null) {
+                    Aviso(
+                        titulo = "Información solicitada al postulante",
+                        texto = p.mensajeAnfitrion,
+                        icono = Icons.Outlined.Email,
+                        fondo = c.primaryContainer,
+                        color = c.onPrimaryContainer
+                    )
+                }
+
                 TituloSeccion("Datos del postulante", Modifier.padding(top = 6.dp))
                 DatosPostulante(p)
+
+                Acciones(p, onAbrirDecision)
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+
+    val decision = uiState.decisionAbierta
+    val postulacion = uiState.postulacion
+    if (decision != null && postulacion != null) {
+        DialogoDecision(
+            decision = decision,
+            estado = postulacion.estado,
+            mensaje = uiState.mensaje,
+            error = uiState.errorMensaje,
+            enviando = uiState.enviando,
+            onMensajeChange = onMensajeChange,
+            onConfirmar = onConfirmar,
+            onCancelar = onCancelar
+        )
     }
 }
 
@@ -183,6 +257,155 @@ private fun DatosPostulante(p: Postulacion) {
     }
 }
 
+@Composable
+private fun Acciones(p: Postulacion, onAbrirDecision: (DecisionPostulacion) -> Unit) {
+    val c = MaterialTheme.colorScheme
+    val decisiones = p.estado.decisionesPermitidas()
+
+    if (decisiones.isEmpty()) {
+        TarjetaGaleria {
+            Text(
+                "Esta postulación ya fue resuelta.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    TituloSeccion("Tu decisión", Modifier.padding(top = 6.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (DecisionPostulacion.APROBAR in decisiones) {
+            BotonPrincipal(
+                texto = if (p.estado == EstadoPostulacion.OBSERVADA) "Corregir y aprobar" else "Aprobar membresía",
+                cargando = false,
+                onClick = { onAbrirDecision(DecisionPostulacion.APROBAR) },
+                icono = Icons.Filled.Check
+            )
+        }
+        if (DecisionPostulacion.PEDIR_INFORMACION in decisiones) {
+            OutlinedButton(
+                onClick = { onAbrirDecision(DecisionPostulacion.PEDIR_INFORMACION) },
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+            ) {
+                Icon(Icons.Outlined.Email, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Pedir más información", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+        if (DecisionPostulacion.RECHAZAR in decisiones) {
+            OutlinedButton(
+                onClick = { onAbrirDecision(DecisionPostulacion.RECHAZAR) },
+                shape = MaterialTheme.shapes.medium,
+                border = BorderStroke(1.dp, c.error),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = c.error),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+            ) {
+                Icon(Icons.Outlined.Block, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Rechazar postulación", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+private data class TextosDecision(
+    val titulo: String,
+    val explicacion: String,
+    val etiqueta: String,
+    val confirmar: String
+)
+
+private fun textosDe(decision: DecisionPostulacion, estado: EstadoPostulacion): TextosDecision = when (decision) {
+    DecisionPostulacion.APROBAR ->
+        if (estado == EstadoPostulacion.OBSERVADA) TextosDecision(
+            titulo = "Corregir y aprobar",
+            explicacion = "Anota qué revisaste o corregiste (por ejemplo, que verificaste el DNI físico). " +
+                    "El postulante pasará a Socio Activo con su número de socio.",
+            etiqueta = "Nota de la corrección",
+            confirmar = "Aprobar"
+        ) else TextosDecision(
+            titulo = "Aprobar membresía",
+            explicacion = "El postulante pasará a Socio Activo y recibirá su número de socio.",
+            etiqueta = "Nota (opcional)",
+            confirmar = "Aprobar"
+        )
+    DecisionPostulacion.PEDIR_INFORMACION -> TextosDecision(
+        titulo = "Pedir más información",
+        explicacion = "La postulación seguirá observada. El postulante verá tu mensaje en el estado de su postulación.",
+        etiqueta = "Mensaje para el postulante",
+        confirmar = "Enviar"
+    )
+    DecisionPostulacion.RECHAZAR -> TextosDecision(
+        titulo = "Rechazar postulación",
+        explicacion = "El rechazo es definitivo: el postulante verá este motivo y no podrá volver a postular.",
+        etiqueta = "Motivo del rechazo",
+        confirmar = "Rechazar"
+    )
+}
+
+@Composable
+private fun DialogoDecision(
+    decision: DecisionPostulacion,
+    estado: EstadoPostulacion,
+    mensaje: String,
+    error: String?,
+    enviando: Boolean,
+    onMensajeChange: (String) -> Unit,
+    onConfirmar: () -> Unit,
+    onCancelar: () -> Unit
+) {
+    val c = MaterialTheme.colorScheme
+    val textos = textosDe(decision, estado)
+
+    AlertDialog(
+        onDismissRequest = { if (!enviando) onCancelar() },
+        containerColor = c.surfaceContainerLowest,
+        title = { Text(textos.titulo, style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(textos.explicacion, style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant)
+                OutlinedTextField(
+                    value = mensaje,
+                    onValueChange = onMensajeChange,
+                    label = { Text(textos.etiqueta) },
+                    isError = error != null,
+                    supportingText = if (error != null) { { Text(error) } } else null,
+                    enabled = !enviando,
+                    minLines = 3,
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = c.surfaceContainerLowest,
+                        unfocusedContainerColor = c.surfaceContainerLowest,
+                        unfocusedBorderColor = c.outlineVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirmar, enabled = !enviando) {
+                if (enviando) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        textos.confirmar,
+                        color = if (decision == DecisionPostulacion.RECHAZAR) c.error else c.primary
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar, enabled = !enviando) { Text("Cancelar") }
+        }
+    )
+}
+
 @Preview(name = "Claro", showBackground = true)
 @Preview(name = "Nocturno", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -200,8 +423,9 @@ private fun DetallePostulacionScreenPreview() {
                     fechaRegistro = 1_791_000_000_000
                 )
             ),
-            onVolver = {},
-            onReintentar = {}
+            snackbarHostState = remember { SnackbarHostState() },
+            onVolver = {}, onReintentar = {}, onAbrirDecision = {},
+            onMensajeChange = {}, onConfirmar = {}, onCancelar = {}
         )
     }
 }
