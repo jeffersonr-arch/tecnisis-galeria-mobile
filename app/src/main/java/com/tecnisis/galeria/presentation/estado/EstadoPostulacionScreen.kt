@@ -114,6 +114,19 @@ private fun DetalleEstado(p: Postulacion) {
             TarjetaGaleria { Text(nota, style = MaterialTheme.typography.bodyMedium) }
         }
 
+        if (p.estado == EstadoPostulacion.OBSERVADA && p.mensajeAnfitrion != null) {
+            TarjetaGaleria {
+                TituloSeccion("Mensaje del Anfitrión")
+                Text(p.mensajeAnfitrion, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Comunícate con la galería para enviar lo solicitado.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.onSurfaceVariant
+                )
+            }
+        }
+
         TarjetaGaleria {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TituloSeccion("Avance", Modifier.weight(1f))
