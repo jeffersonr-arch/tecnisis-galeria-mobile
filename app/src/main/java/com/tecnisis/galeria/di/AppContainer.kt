@@ -31,9 +31,18 @@ import com.tecnisis.galeria.domain.repository.PreferenciasRepository
 import com.tecnisis.galeria.domain.usecase.GuardarModoTemaUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarModoTemaUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarUsuarioActualUseCase
+import com.tecnisis.galeria.data.local.GaleriaDatabase
 import com.tecnisis.galeria.data.remote.ConectividadRepositoryImpl
+import com.tecnisis.galeria.data.repository.SocioRepositoryImpl
 import com.tecnisis.galeria.domain.repository.ConectividadRepository
+import com.tecnisis.galeria.domain.repository.SocioRepository
 import com.tecnisis.galeria.domain.usecase.ObservarConexionUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarMiPerfilUseCase
+import com.tecnisis.galeria.domain.usecase.ProgramarSincronizacionUseCase
+import com.tecnisis.galeria.domain.usecase.SincronizarPerfilUseCase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 interface AppContainer {
     // Sprint 1
@@ -56,7 +65,11 @@ interface AppContainer {
     val guardarModoTema: GuardarModoTemaUseCase
 
     val observarUsuarioActual: ObservarUsuarioActualUseCase
+
     // Sprint 2 · HU05
+    val observarMiPerfil: ObservarMiPerfilUseCase
+    val sincronizarPerfil: SincronizarPerfilUseCase
+    val programarSincronizacion: ProgramarSincronizacionUseCase
     val observarConexion: ObservarConexionUseCase
 }
 
@@ -104,7 +117,17 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val observarModoTema by lazy { ObservarModoTemaUseCase(preferenciasRepository) }
     override val guardarModoTema by lazy { GuardarModoTemaUseCase(preferenciasRepository) }
     override val observarUsuarioActual by lazy { ObservarUsuarioActualUseCase(authRepository) }
-    // HU05: conectividad
+
+    // HU05: Room (SQLite) + WorkManager + conectividad
+    private val alcanceApp = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val baseDeDatos by lazy { GaleriaDatabase.obtener(contexto) }
+    private val socioRepository: SocioRepository by lazy {
+        SocioRepositoryImpl(contexto, auth, db, baseDeDatos.socioDao(), alcanceApp)
+    }
     private val conectividadRepository: ConectividadRepository by lazy { ConectividadRepositoryImpl(contexto) }
+
+    override val observarMiPerfil by lazy { ObservarMiPerfilUseCase(socioRepository) }
+    override val sincronizarPerfil by lazy { SincronizarPerfilUseCase(socioRepository) }
+    override val programarSincronizacion by lazy { ProgramarSincronizacionUseCase(socioRepository) }
     override val observarConexion by lazy { ObservarConexionUseCase(conectividadRepository) }
 }
