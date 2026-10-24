@@ -94,7 +94,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val iniciarSesion by lazy { IniciarSesionUseCase(authRepository) }
     override val obtenerUsuarioActual by lazy { ObtenerUsuarioActualUseCase(authRepository) }
     override val haySesionActiva by lazy { HaySesionActivaUseCase(authRepository) }
-    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository) }
+    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository, socioRepository) } // HU05
 
     override val registrarCuenta by lazy { RegistrarCuentaUseCase(authRepository) }
     override val enviarPostulacion by lazy {
