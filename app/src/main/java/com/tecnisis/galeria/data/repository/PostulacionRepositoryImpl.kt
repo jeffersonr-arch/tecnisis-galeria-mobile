@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
+import com.tecnisis.galeria.domain.model.DecisionPostulacion
 import com.tecnisis.galeria.domain.model.EstadoPostulacion
 import com.tecnisis.galeria.domain.model.Postulacion
 import com.tecnisis.galeria.domain.model.PostulacionError
@@ -17,6 +18,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.io.IOException
 
 class PostulacionRepositoryImpl(
     private val auth: FirebaseAuth,
@@ -94,15 +96,16 @@ class PostulacionRepositoryImpl(
         awaitClose { registro.remove() }
     }
 
+    // HU04: la Cloud Function hace todo en una transacción (postulación, socio, contador y rol)
     override suspend fun resolver(
-        uid: String, aprobar: Boolean, motivoRechazo: String?
+        uid: String, decision: DecisionPostulacion, mensaje: String?
     ): Result<Unit> = ejecutar {
         functions.getHttpsCallable("resolverPostulacion")
             .call(
                 mapOf(
                     "uid" to uid,
-                    "decision" to if (aprobar) "aprobar" else "rechazar",
-                    "motivo" to motivoRechazo
+                    "decision" to decision.valorFuncion,
+                    "mensaje" to mensaje
                 )
             )
             .await()
@@ -136,7 +139,10 @@ class PostulacionRepositoryImpl(
         estado = EstadoPostulacion.desdeFirestore(getString("estado")),
         motivo = getString("motivo"),
         motivoRechazo = getString("motivoRechazo"),
-        fechaRegistro = getTimestamp("fechaRegistro")?.toDate()?.time
+        fechaRegistro = getTimestamp("fechaRegistro")?.toDate()?.time,
+        mensajeAnfitrion = getString("mensajeAnfitrion"),
+        notaAprobacion = getString("notaAprobacion"),
+        numeroSocio = getString("numeroSocio")
     )
 
     private inline fun <T> ejecutar(bloque: () -> T): Result<T> =
@@ -155,9 +161,14 @@ class PostulacionRepositoryImpl(
             FirebaseFirestoreException.Code.PERMISSION_DENIED -> PostulacionError.SinPermiso
             else -> PostulacionError.Desconocido
         }
-        is FirebaseFunctionsException -> when (e.code) {
-            FirebaseFunctionsException.Code.UNAVAILABLE -> PostulacionError.SinConexion
-            FirebaseFunctionsException.Code.PERMISSION_DENIED -> PostulacionError.SinPermiso
+        is FirebaseFunctionsException -> when {
+            e.cause is IOException -> PostulacionError.SinConexion // sin internet
+            e.code == FirebaseFunctionsException.Code.UNAVAILABLE ||
+                    e.code == FirebaseFunctionsException.Code.DEADLINE_EXCEEDED -> PostulacionError.SinConexion
+            e.code == FirebaseFunctionsException.Code.PERMISSION_DENIED ||
+                    e.code == FirebaseFunctionsException.Code.UNAUTHENTICATED -> PostulacionError.SinPermiso
+            e.code == FirebaseFunctionsException.Code.NOT_FOUND -> PostulacionError.NoEncontrada
+            e.code == FirebaseFunctionsException.Code.FAILED_PRECONDITION -> PostulacionError.DecisionNoPermitida
             else -> PostulacionError.Servidor(e.message ?: "Error en el servidor")
         }
         is FirebaseNetworkException -> PostulacionError.SinConexion
