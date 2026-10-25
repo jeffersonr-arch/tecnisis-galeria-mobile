@@ -1,7 +1,7 @@
 package com.tecnisis.galeria.presentation.biometric
 
 import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -9,7 +9,7 @@ import androidx.fragment.app.FragmentActivity
 class BiometricAuthenticator(private val activity: FragmentActivity) {
 
     fun estaDisponible(): Boolean =
-        BiometricManager.from(activity).canAuthenticate(BIOMETRIC_STRONG) ==
+        BiometricManager.from(activity).canAuthenticate(BIOMETRIC_WEAK) ==
                 BiometricManager.BIOMETRIC_SUCCESS
 
     fun autenticar(onExito: () -> Unit, onError: (String) -> Unit) {
@@ -24,13 +24,12 @@ class BiometricAuthenticator(private val activity: FragmentActivity) {
                 ) onError(errString.toString())
             }
         }
-
         val prompt = BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), callback)
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Ingresar a TECNISIS Galería")
             .setSubtitle("Confirma tu identidad con tu huella")
             .setNegativeButtonText("Usar contraseña")
-            .setAllowedAuthenticators(BIOMETRIC_STRONG)
+            .setAllowedAuthenticators(BIOMETRIC_WEAK)
             .build()
         prompt.authenticate(info)
     }
