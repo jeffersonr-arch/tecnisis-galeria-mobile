@@ -71,7 +71,23 @@ fun LoginRoute(
     val activity = LocalActivity.current as FragmentActivity
     val biometria = remember(activity) { BiometricAuthenticator(activity) }
 
+    val pedirHuella: () -> Unit = {
+        biometria.autenticar(
+            onExito = viewModel::onHuellaExitosa,
+            onError = viewModel::onHuellaError
+        )
+    }
+
     LaunchedEffect(Unit) { viewModel.configurarHuella(biometria.estaDisponible()) }
+
+    // HU05: con sesión abierta, la huella aparece sola al abrir la app
+    LaunchedEffect(uiState.pedirHuella) {
+        if (uiState.pedirHuella) {
+            pedirHuella()
+            viewModel.onHuellaPedida()
+        }
+    }
+
     LaunchedEffect(uiState.usuarioAutenticado) {
         uiState.usuarioAutenticado?.let(onLoginExitoso)
     }
@@ -81,12 +97,7 @@ fun LoginRoute(
         onCorreoChange = viewModel::onCorreoChange,
         onContrasenaChange = viewModel::onContrasenaChange,
         onIngresarClick = viewModel::onIngresarClick,
-        onHuellaClick = {
-            biometria.autenticar(
-                onExito = viewModel::onHuellaExitosa,
-                onError = viewModel::onHuellaError
-            )
-        },
+        onHuellaClick = pedirHuella,
         onCrearCuentaClick = onCrearCuenta
     )
 }
