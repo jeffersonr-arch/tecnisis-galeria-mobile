@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.tecnisis.galeria.GaleriaApplication
+import com.tecnisis.galeria.domain.model.AuthError
 import com.tecnisis.galeria.domain.model.Rol
 import com.tecnisis.galeria.domain.model.Usuario
 import com.tecnisis.galeria.domain.usecase.CerrarSesionUseCase
@@ -20,6 +21,7 @@ sealed interface EstadoInicio {
     data object Cargando : EstadoInicio
     data class Autorizado(val usuario: Usuario) : EstadoInicio
     data object Denegado : EstadoInicio
+    data object SinConexion : EstadoInicio // no se pudo leer el rol, pero la sesión sigue abierta
 }
 
 class InicioViewModel(
@@ -32,12 +34,17 @@ class InicioViewModel(
 
     fun verificarAcceso(rolDePantalla: Rol) {
         viewModelScope.launch {
+            _estado.value = EstadoInicio.Cargando
             _estado.value = obtenerUsuarioActual().fold(
                 onSuccess = { usuario ->
                     if (usuario.rol == rolDePantalla) EstadoInicio.Autorizado(usuario)
                     else EstadoInicio.Denegado
                 },
-                onFailure = { EstadoInicio.Denegado }
+                // Sin internet no se echa al usuario: se le deja reintentar
+                onFailure = { error ->
+                    if (error == AuthError.SinConexion) EstadoInicio.SinConexion
+                    else EstadoInicio.Denegado
+                }
             )
         }
     }
