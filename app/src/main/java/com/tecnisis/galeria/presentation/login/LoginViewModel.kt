@@ -26,10 +26,22 @@ class LoginViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
+    private var ingresoAutomaticoIntentado = false
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    fun configurarHuella(biometriaDisponible: Boolean) =
-        _uiState.update { it.copy(puedeUsarHuella = biometriaDisponible && haySesionActiva()) }
+    fun configurarHuella(biometriaDisponible: Boolean) {
+        val haySesion = haySesionActiva()
+        _uiState.update { it.copy(puedeUsarHuella = biometriaDisponible && haySesion) }
+        if (!haySesion || ingresoAutomaticoIntentado) return
+        ingresoAutomaticoIntentado = true
+        if (biometriaDisponible) {
+            _uiState.update { it.copy(pedirHuella = true) }
+        } else {
+            ejecutar { obtenerUsuarioActual() }
+        }
+    }
+
+    fun onHuellaPedida() = _uiState.update { it.copy(pedirHuella = false) }
 
     fun onCorreoChange(valor: String) =
         _uiState.update { it.copy(correo = valor, errorCorreo = null, mensajeError = null) }

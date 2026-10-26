@@ -1,35 +1,49 @@
 package com.tecnisis.galeria.presentation.inicio
 
+import android.content.res.Configuration
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material3.Card
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tecnisis.galeria.domain.model.EstadoPostulacion
+import com.tecnisis.galeria.domain.model.Postulacion
 import com.tecnisis.galeria.domain.model.Rol
 import com.tecnisis.galeria.domain.model.Usuario
+import com.tecnisis.galeria.presentation.componentes.ChipEstado
+import com.tecnisis.galeria.presentation.componentes.EncabezadoGaleria
+import com.tecnisis.galeria.presentation.componentes.TarjetaFuncion
+import com.tecnisis.galeria.presentation.componentes.TituloSeccion
+import com.tecnisis.galeria.presentation.estado.EstadoPostulacionUi
+import com.tecnisis.galeria.presentation.estado.EstadoPostulacionViewModel
+import com.tecnisis.galeria.presentation.estado.pasosCompletos
+import com.tecnisis.galeria.presentation.estado.resumen
+import com.tecnisis.galeria.presentation.navigation.Pantalla
 import com.tecnisis.galeria.presentation.navigation.funciones
 import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 
@@ -37,6 +51,7 @@ import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 fun InicioRolRoute(
     rol: Rol,
     onSesionCerrada: () -> Unit,
+    onNavegar: (Pantalla) -> Unit = {},
     viewModel: InicioViewModel = viewModel(factory = InicioViewModel.Factory)
 ) {
     val estado by viewModel.estado.collectAsState()
@@ -50,65 +65,146 @@ fun InicioRolRoute(
             viewModel.onCerrarSesion()
             onSesionCerrada()
         }
-        is EstadoInicio.Autorizado -> InicioRolScreen(
-            usuario = e.usuario,
-            onCerrarSesion = {
-                viewModel.onCerrarSesion()
-                onSesionCerrada()
-            }
-        )
+        EstadoInicio.SinConexion -> Column(
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Sin conexión a internet", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "No pudimos confirmar tu cuenta. Revisa tu red e inténtalo de nuevo.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TextButton(onClick = { viewModel.verificarAcceso(rol) }) { Text("Reintentar") }
+        }
+        is EstadoInicio.Autorizado -> {
+            val postulacion: Postulacion? = if (rol == Rol.POSTULANTE) {
+                val estadoViewModel: EstadoPostulacionViewModel =
+                    androidx.lifecycle.viewmodel.compose.viewModel(factory = EstadoPostulacionViewModel.Factory)
+                val estadoPostulacion by estadoViewModel.estado.collectAsState()
+                (estadoPostulacion as? EstadoPostulacionUi.ConPostulacion)?.postulacion
+            } else null
+
+            InicioRolScreen(usuario = e.usuario, postulacion = postulacion, onNavegar = onNavegar)
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InicioRolScreen(usuario: Usuario, onCerrarSesion: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(usuario.rol.etiqueta) },
-                actions = {
-                    IconButton(onClick = onCerrarSesion) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Cerrar sesión")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+fun InicioRolScreen(usuario: Usuario, postulacion: Postulacion?, onNavegar: (Pantalla) -> Unit) {
+    val c = MaterialTheme.colorScheme
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(c.background)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Box {
+            EncabezadoGaleria(
+                etiquetaRol = usuario.rol.etiqueta,
+                saludo = "Hola, ${usuario.nombre.substringBefore(" ")}",
+                detalle = usuario.correo,
+                espacioInferior = if (postulacion != null) 84.dp else 32.dp
             )
+            if (postulacion != null) {
+                TarjetaPostulacion(
+                    postulacion = postulacion,
+                    onClick = { onNavegar(Pantalla.EstadoPostulacion) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 20.dp)
+                        .offset(y = 58.dp)
+                )
+            }
         }
-    ) { innerPadding ->
+
+        Spacer(Modifier.height(if (postulacion != null) 82.dp else 24.dp))
+
         Column(
-            Modifier
-                .padding(innerPadding)
-                .padding(16.dp)
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Hola, ${usuario.nombre}", style = MaterialTheme.typography.headlineSmall)
-            Text(usuario.correo, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(24.dp))
-            Text("Tus funciones", style = MaterialTheme.typography.titleMedium)
-            usuario.rol.funciones().forEach { funcion ->
-                Card(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp)
-                ) {
-                    Text(funcion, Modifier.padding(16.dp))
+            TituloSeccion("Tus funciones")
+
+            val coloresIcono = listOf(
+                c.primaryContainer to c.onPrimaryContainer,
+                c.secondaryContainer to c.onSecondaryContainer,
+                c.tertiaryContainer to c.onTertiaryContainer
+            )
+            usuario.rol.funciones().forEachIndexed { i, funcion ->
+                val (fondo, color) = coloresIcono[i % coloresIcono.size]
+                TarjetaFuncion(
+                    titulo = funcion.titulo,
+                    subtitulo = funcion.subtitulo,
+                    icono = funcion.icono,
+                    fondoIcono = fondo,
+                    colorIcono = color,
+                    onClick = funcion.destino?.let { destino -> { onNavegar(destino) } }
+                )
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun TarjetaPostulacion(postulacion: Postulacion, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val c = MaterialTheme.colorScheme
+    val completos = postulacion.estado.pasosCompletos()
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = c.surfaceContainerLowest,
+        shadowElevation = 6.dp,
+        border = BorderStroke(1.dp, c.outlineVariant)
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Tu postulación",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = c.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                ChipEstado(postulacion.estado)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(4) { i ->
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(if (i < completos) c.primary else c.surfaceVariant)
+                    )
                 }
             }
+            Text(postulacion.estado.resumen(), style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant)
         }
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "Claro", showBackground = true)
+@Preview(name = "Nocturno", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun InicioRolScreenPreview() {
     TecnisisGaleriaTheme {
         InicioRolScreen(
-            usuario = Usuario("1", "Gerente Prueba", "gerente@tecnisis.pe", Rol.GERENTE),
-            onCerrarSesion = {}
+            usuario = Usuario("1", "Pedro Castillo", "pedro.castillo@correo.com", Rol.POSTULANTE),
+            postulacion = Postulacion(
+                uid = "1", dni = "88776655", nombres = "Pedro", apellidoPaterno = "Castillo",
+                apellidoMaterno = "Huaman", direccion = "Av. Lima 123", sexo = "Masculino",
+                telefono = "987654321", correo = "pedro.castillo@correo.com",
+                estado = EstadoPostulacion.VERIFICADA
+            ),
+            onNavegar = {}
         )
     }
 }

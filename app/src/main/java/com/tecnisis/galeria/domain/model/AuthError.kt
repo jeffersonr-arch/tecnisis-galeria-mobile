@@ -7,5 +7,7 @@ sealed class AuthError : Exception() {
     data object DemasiadosIntentos : AuthError()
     data object SinRol : AuthError()
     data object SinSesion : AuthError()
+    data object CorreoEnUso : AuthError()
+    data object ContrasenaDebil : AuthError()
     data object Desconocido : AuthError()
 }

@@ -10,5 +10,6 @@ data class LoginUiState(
     val mensajeError: String? = null,
     val cargando: Boolean = false,
     val puedeUsarHuella: Boolean = false,
-    val usuarioAutenticado: Usuario? = null
+    val usuarioAutenticado: Usuario? = null,
+    val pedirHuella: Boolean = false // HU05: hay sesión abierta y la app debe pedir la huella sola
 )
