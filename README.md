@@ -1,7 +1,11 @@
 # TECNISIS Mobile — Galería de Arte
 App Android de gestión de exposiciones de una galería de arte, con acceso por 
 roles.
-## Sprint 1 — HU01: Login y control de acceso por rol- Login con Firebase Authentication (correo y contraseña) y manejo de errores- Ingreso alterno con huella digital (BiometricPrompt)- Redirección según el rol guardado en Firestore- Arquitectura MVVM + Clean (capas data, domain y presentation)
+## Sprint 1 — HU01: Login y control de acceso por rol
+- Login con Firebase Authentication (correo y contraseña) y manejo de errores
+- Ingreso alterno con huella digital (BiometricPrompt)
+- Redirección según el rol guardado en Firestore
+- Arquitectura MVVM + Clean (capas data, domain y presentation)
 ## Sprint 2 — Gestión de membresía
 ### HU02: Postulación y registro de identidad
 Page 44 of 52
