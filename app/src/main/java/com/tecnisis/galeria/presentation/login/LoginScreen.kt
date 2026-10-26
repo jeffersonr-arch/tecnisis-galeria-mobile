@@ -135,7 +135,7 @@ fun LoginScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(Modifier.height(64.dp))
-            LogoGaleria(64.dp, fondo = c.primary, color = c.secondary, modifier = Modifier.padding(start = 8.dp))
+            LogoGaleria(64.dp, modifier = Modifier.padding(start = 8.dp))
             Spacer(Modifier.height(20.dp))
             Text(
                 "Bienvenido a\nTECNISIS Galería",

@@ -1,11 +1,11 @@
 package com.tecnisis.galeria.presentation.componentes
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -15,14 +15,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -30,21 +28,15 @@ import com.tecnisis.galeria.R
 import com.tecnisis.galeria.presentation.theme.galeria
 
 @Composable
-fun LogoGaleria(tamano: Dp, fondo: Color, color: Color, modifier: Modifier = Modifier) {
-    Box(
+fun LogoGaleria(tamano: Dp, modifier: Modifier = Modifier) {
+    // HU14: logo "Marco con pigmentos"; trae sus propios colores, por eso no se tiñe
+    Image(
+        painter = painterResource(R.drawable.logo_marco),
+        contentDescription = "Logo de TECNISIS Galería",
         modifier = modifier
             .size(tamano)
             .clip(RoundedCornerShape(tamano * 0.28f))
-            .background(fondo),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_busto),
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
+    )
 }
 
 @Composable
@@ -88,7 +80,7 @@ fun EncabezadoGaleria(
                 .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = espacioInferior)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LogoGaleria(40.dp, fondo = g.sobreEncabezado, color = g.encabezado)
+                LogoGaleria(40.dp)
                 Spacer(Modifier.width(10.dp))
                 Text("TECNISIS", style = MaterialTheme.typography.titleLarge, color = g.sobreEncabezado)
             }
