@@ -16,8 +16,7 @@ import com.tecnisis.galeria.domain.model.Rol
 enum class Pantalla {
     Login, Registro,
     Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente,
-    Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion, PerfilSocio,
-    // HU14: perfil común y pestañas de los sprints siguientes
+    Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion,
     Perfil, MisObras, SolicitudesObras, ObrasAsignadas, Rechazos, PorTasar, Tasadas,
     DashboardSolicitudes, ProyeccionEconomica
 }

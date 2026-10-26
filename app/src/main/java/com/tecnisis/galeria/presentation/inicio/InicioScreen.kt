@@ -20,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,6 +64,22 @@ fun InicioRolRoute(
         EstadoInicio.Denegado -> LaunchedEffect(Unit) {
             viewModel.onCerrarSesion()
             onSesionCerrada()
+        }
+        EstadoInicio.SinConexion -> Column(
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Sin conexión a internet", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "No pudimos confirmar tu cuenta. Revisa tu red e inténtalo de nuevo.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TextButton(onClick = { viewModel.verificarAcceso(rol) }) { Text("Reintentar") }
         }
         is EstadoInicio.Autorizado -> {
             val postulacion: Postulacion? = if (rol == Rol.POSTULANTE) {
