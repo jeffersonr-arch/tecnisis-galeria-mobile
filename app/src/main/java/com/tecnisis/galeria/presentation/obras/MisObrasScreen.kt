@@ -39,6 +39,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +52,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tecnisis.galeria.domain.model.EstadoObra
 import com.tecnisis.galeria.domain.model.EstadoSolicitud
 import com.tecnisis.galeria.domain.model.MAX_OBRAS_POR_SOLICITUD
@@ -69,6 +73,32 @@ import java.util.Date
 import java.util.Locale
 
 private val formatoEnvio = SimpleDateFormat("d MMM · h:mm a", Locale.forLanguageTag("es-PE"))
+
+@Composable
+fun MisObrasRoute(
+    onRegistrar: () -> Unit,
+    onEditar: (String) -> Unit,
+    viewModel: MisObrasViewModel = viewModel(factory = MisObrasViewModel.Factory)
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.mensaje) {
+        val mensaje = uiState.mensaje ?: return@LaunchedEffect
+        snackbar.showSnackbar(mensaje)
+        viewModel.onMensajeMostrado()
+    }
+
+    MisObrasScreen(
+        uiState = uiState,
+        snackbarHostState = snackbar,
+        onRegistrar = onRegistrar,
+        onAbrirObra = onEditar,
+        onEnviar = viewModel::onEnviar,
+        onConfirmarEnvio = viewModel::onConfirmarEnvio,
+        onCancelarEnvio = viewModel::onCancelarEnvio
+    )
+}
 
 @Composable
 fun MisObrasScreen(

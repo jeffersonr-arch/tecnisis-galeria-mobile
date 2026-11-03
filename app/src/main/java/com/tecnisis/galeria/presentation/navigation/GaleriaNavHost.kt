@@ -29,6 +29,7 @@ import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
+import com.tecnisis.galeria.presentation.obras.MisObrasRoute
 import com.tecnisis.galeria.presentation.perfil.PerfilRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
@@ -142,6 +143,9 @@ fun GaleriaNavHost(
             }
             composable(Pantalla.Perfil.name) {
                 PerfilRoute(onSesionCerrada = irAlLogin)
+            }
+            composable(Pantalla.MisObras.name) {
+                MisObrasRoute(onRegistrar = {}, onEditar = {})
             }
             composable(Pantalla.Bandeja.name) {
                 BandejaRoute(
