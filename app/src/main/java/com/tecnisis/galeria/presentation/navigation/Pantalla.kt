@@ -17,7 +17,7 @@ enum class Pantalla {
     Login, Registro,
     Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente,
     Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion,
-    Perfil, MisObras, SolicitudesObras, ObrasAsignadas, Rechazos, PorTasar, Tasadas,
+    Perfil, MisObras, RegistrarObra, SolicitudesObras, ObrasAsignadas, Rechazos, PorTasar, Tasadas,
     DashboardSolicitudes, ProyeccionEconomica
 }
 

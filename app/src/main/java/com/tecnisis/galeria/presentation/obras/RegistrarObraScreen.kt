@@ -1,6 +1,13 @@
 package com.tecnisis.galeria.presentation.obras
 
+import android.content.ActivityNotFoundException
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.Manifest
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,12 +43,22 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tecnisis.galeria.domain.model.CampoObra
 import com.tecnisis.galeria.domain.model.NOTA_MAXIMA
 import com.tecnisis.galeria.domain.model.Tecnica
@@ -50,8 +67,114 @@ import com.tecnisis.galeria.presentation.componentes.BotonPrincipal
 import com.tecnisis.galeria.presentation.componentes.CampoTexto
 import com.tecnisis.galeria.presentation.componentes.TarjetaGaleria
 import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
+import com.tecnisis.galeria.presentation.voz.DictadoVoz
+import com.tecnisis.galeria.presentation.voz.EventoDictado
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 private const val MENSAJE_MEDIDA = "Número mayor que 0 y hasta 1000"
+
+@Composable
+fun RegistrarObraRoute(
+    onVolver: () -> Unit,
+    viewModel: RegistrarObraViewModel = viewModel(factory = RegistrarObraViewModel.Factory)
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+    val contexto = LocalContext.current
+    val dictado = remember { DictadoVoz(contexto) }
+    val alcance = rememberCoroutineScope()
+    var trabajoDictado by remember { mutableStateOf<Job?>(null) }
+    // rememberSaveable: sobrevive si Android cierra la pantalla mientras la cámara está abierta
+    var destinoCamara by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(uiState.terminado) {
+        if (uiState.terminado) onVolver()
+    }
+    LaunchedEffect(uiState.mensaje) {
+        val mensaje = uiState.mensaje ?: return@LaunchedEffect
+        snackbar.showSnackbar(mensaje)
+        viewModel.onMensajeMostrado()
+    }
+
+    // Cámara del sistema: escribe la foto en el content:// que le damos (true = la tomó)
+    val camara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { tomada ->
+        val destino = destinoCamara
+        if (tomada && destino != null) viewModel.onFotoRecibida(destino)
+        destinoCamara = null
+    }
+
+    // Selector de fotos del sistema (null = el socio canceló)
+    val galeria = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.onFotoRecibida(uri.toString())
+    }
+
+    val escuchar: () -> Unit = {
+        if (!dictado.estaDisponible()) {
+            viewModel.onAvisoVoz(AvisoVoz.NO_DISPONIBLE)
+        } else {
+            viewModel.onDictadoIniciado()
+            trabajoDictado = alcance.launch {
+                dictado.escuchar().collect { evento ->
+                    when (evento) {
+                        EventoDictado.Escuchando -> Unit
+                        is EventoDictado.Parcial -> viewModel.onDictadoTexto(evento.texto)
+                        is EventoDictado.Final -> {
+                            if (evento.texto.isNotBlank()) viewModel.onDictadoTexto(evento.texto)
+                            viewModel.onDictadoTerminado()
+                        }
+                        is EventoDictado.Fallo -> viewModel.onDictadoFallido(evento.sinVoz)
+                    }
+                }
+            }
+        }
+    }
+
+    val permisoMicrofono = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
+        if (concedido) escuchar() else viewModel.onAvisoVoz(AvisoVoz.SIN_PERMISO)
+    }
+
+    RegistrarObraScreen(
+        uiState = uiState,
+        snackbarHostState = snackbar,
+        acciones = AccionesRegistrarObra(
+            onVolver = onVolver,
+            onTituloChange = viewModel::onTituloChange,
+            onTecnicaChange = viewModel::onTecnicaChange,
+            onAltoChange = viewModel::onAltoChange,
+            onAnchoChange = viewModel::onAnchoChange,
+            onProfundidadChange = viewModel::onProfundidadChange,
+            onNotaChange = viewModel::onNotaChange,
+            onTomarFoto = {
+                val destino = viewModel.crearDestinoFoto()
+                destinoCamara = destino
+                try {
+                    camara.launch(Uri.parse(destino))
+                } catch (e: ActivityNotFoundException) {
+                    viewModel.onSinCamara()
+                }
+            },
+            onElegirGaleria = {
+                galeria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onDictar = {
+                val tienePermiso = ContextCompat.checkSelfPermission(
+                    contexto, Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+                if (tienePermiso) escuchar() else permisoMicrofono.launch(Manifest.permission.RECORD_AUDIO)
+            },
+            onDetenerDictado = {
+                trabajoDictado?.cancel()   // cancela el Flow: awaitClose apaga el micrófono
+                trabajoDictado = null
+                viewModel.onDictadoTerminado()
+            },
+            onGuardar = viewModel::onGuardar,
+            onPedirEliminar = viewModel::onPedirEliminar,
+            onCancelarEliminar = viewModel::onCancelarEliminar,
+            onConfirmarEliminar = viewModel::onConfirmarEliminar
+        )
+    )
+}
 
 @Composable
 fun RegistrarObraScreen(
