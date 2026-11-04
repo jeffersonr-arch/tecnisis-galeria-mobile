@@ -17,7 +17,7 @@ enum class Pantalla {
     Login, Registro,
     Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente,
     Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion,
-    Perfil, MisObras, SolicitudesObras, ObrasAsignadas, Rechazos, PorTasar, Tasadas,
+    Perfil, MisObras, RegistrarObra, SolicitudesObras, ObrasAsignadas, Rechazos, PorTasar, Tasadas,
     DashboardSolicitudes, ProyeccionEconomica
 }
 
@@ -46,7 +46,7 @@ fun Rol.funciones(): List<FuncionRol> = when (this) {
     )
     Rol.SOCIO_ACTIVO -> listOf(
         FuncionRol("Mi perfil de socio", Pantalla.Perfil, "Tus datos y tu membresía", Icons.Outlined.Badge),
-        FuncionRol("Registrar obras", null, "Llega en el Sprint 3 (HU06)", Icons.Outlined.Image)
+        FuncionRol("Mis obras", Pantalla.MisObras, "Registra tus obras y envía tu solicitud", Icons.Outlined.Image)
     )
     Rol.ANFITRION -> listOf(
         FuncionRol("Revisar postulaciones", Pantalla.Bandeja, "Observadas y verificadas por resolver", Icons.Outlined.Inbox),

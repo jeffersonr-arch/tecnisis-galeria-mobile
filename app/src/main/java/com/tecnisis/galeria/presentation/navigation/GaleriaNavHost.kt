@@ -29,6 +29,9 @@ import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
+import com.tecnisis.galeria.presentation.obras.MisObrasRoute
+import com.tecnisis.galeria.presentation.obras.RegistrarObraRoute
+import com.tecnisis.galeria.presentation.obras.RegistrarObraViewModel
 import com.tecnisis.galeria.presentation.perfil.PerfilRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
@@ -142,6 +145,26 @@ fun GaleriaNavHost(
             }
             composable(Pantalla.Perfil.name) {
                 PerfilRoute(onSesionCerrada = irAlLogin)
+            }
+            composable(Pantalla.MisObras.name) {
+                MisObrasRoute(
+                    onRegistrar = { navController.navigate(Pantalla.RegistrarObra.name) },
+                    onEditar = { id ->
+                        navController.navigate("${Pantalla.RegistrarObra.name}?${RegistrarObraViewModel.ARG_OBRA_ID}=$id")
+                    }
+                )
+            }
+            composable(
+                route = "${Pantalla.RegistrarObra.name}?${RegistrarObraViewModel.ARG_OBRA_ID}={${RegistrarObraViewModel.ARG_OBRA_ID}}",
+                arguments = listOf(
+                    navArgument(RegistrarObraViewModel.ARG_OBRA_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) {
+                RegistrarObraRoute(onVolver = volver)
             }
             composable(Pantalla.Bandeja.name) {
                 BandejaRoute(
