@@ -423,9 +423,12 @@ private fun DialogoEnvio(cantidad: Int, onConfirmar: () -> Unit, onCancelar: () 
         containerColor = c.surfaceContainerLowest,
         title = { Text("¿Enviar tu solicitud?", style = MaterialTheme.typography.titleLarge) },
         text = {
+            val cuerpo = if (cantidad == 1)
+                "Se enviará 1 obra al Anfitrión. Después ya no podrás editarla, borrarla ni agregar otras."
+            else
+                "Se enviarán $cantidad obras al Anfitrión. Después ya no podrás editarlas, borrarlas ni agregar otras."
             Text(
-                "Se enviarán ${textoObras(cantidad)} al Anfitrión. Después ya no podrás editarlas, borrarlas ni agregar otras. " +
-                        "Si no tienes internet, se enviará sola cuando vuelva la conexión.",
+                "$cuerpo Si no tienes internet, tu solicitud se enviará sola cuando vuelva la conexión.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.onSurfaceVariant
             )
