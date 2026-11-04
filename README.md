@@ -40,8 +40,19 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - Ingreso automático con huella si hay sesión abierta (también sin internet)
 - Al cerrar sesión se borra la ficha del celular
 
+## Sprint 3 — Registro de obras y asignación de expertos
+
+### HU06: Registro de obras con evidencia fotográfica
+- Registro de una o varias obras (título, técnica, alto, ancho y profundidad opcional) con validación de campos obligatorios
+- Foto obligatoria tomada con la cámara del sistema o elegida de la galería, reducida a 1600 px y girada según el EXIF
+- Nota de voz opcional transcrita a texto con SpeechRecognizer; el texto se corrige o se escribe a mano
+- Borrador de la solicitud de exhibición guardado en SQLite con Room (migración a la versión 2): funciona sin internet
+- Al enviar la solicitud, WorkManager sube las fotos a Firebase Storage y la solicitud con sus obras a Firestore en un batch, apenas hay conexión
+- Reglas de Firestore y de Storage: solo el Socio Activo crea sus solicitudes y sube sus fotos
+- Pruebas unitarias del formulario y del envío
+
 ## Tecnologías
-Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt
+Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider
 
 ## Cómo ejecutar
 1. Clonar el repositorio y abrirlo en Android Studio.
@@ -51,7 +62,7 @@ Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Fi
 ## Cloud Functions y reglas
 1. Instalar Node.js y `npm install -g firebase-tools`; luego `firebase login`.
 2. `cd functions` y `npm install`.
-3. Desde la raíz: `firebase deploy --only "functions,firestore:rules"` (requiere el plan Blaze).
+3. Desde la raíz: `firebase deploy --only "functions,firestore:rules,storage"` (requiere el plan Blaze).
 
 ## Equipo
 - Jefferson Rojas (jeffersonr-arch)
