@@ -11,6 +11,14 @@ import com.tecnisis.galeria.data.local.GaleriaDatabase
 import com.tecnisis.galeria.data.local.PreferenciasRepositoryImpl
 import com.tecnisis.galeria.data.remote.ConectividadRepositoryImpl
 import com.tecnisis.galeria.data.remote.RetrofitDni
+import com.tecnisis.galeria.data.remote.RetrofitAnalisis
+import com.tecnisis.galeria.data.repository.RevisionRepositoryImpl
+import com.tecnisis.galeria.domain.repository.RevisionRepository
+import com.tecnisis.galeria.domain.usecase.AnalizarSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.DescargarFotoObraUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarExpertosUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarSolicitudEnRevisionUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarSolicitudesUseCase
 import com.tecnisis.galeria.data.repository.AuthRepositoryImpl
 import com.tecnisis.galeria.data.repository.ConsultaDniMock
 import com.tecnisis.galeria.data.repository.ConsultaDniRepositoryImpl
@@ -100,6 +108,12 @@ interface AppContainer {
     val crearDestinoCamara: CrearDestinoCamaraUseCase
     val prepararFoto: PrepararFotoUseCase
     val descartarFoto: DescartarFotoUseCase
+    // Sprint 3 · HU07
+    val observarSolicitudes: ObservarSolicitudesUseCase
+    val observarSolicitudEnRevision: ObservarSolicitudEnRevisionUseCase
+    val observarExpertos: ObservarExpertosUseCase
+    val analizarSolicitud: AnalizarSolicitudUseCase
+    val descargarFotoObra: DescargarFotoObraUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -165,7 +179,10 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     // HU06: obras (Room) + fotos (archivos) + envío (Storage, Firestore y WorkManager)
     private val storage by lazy {
         // Sin internet, Storage reintenta hasta 10 minutos por defecto; 2 minutos basta dentro del worker
-        FirebaseStorage.getInstance().apply { maxUploadRetryTimeMillis = 120_000 }
+        FirebaseStorage.getInstance().apply {
+            maxUploadRetryTimeMillis = 120_000
+            maxDownloadRetryTimeMillis = 30_000 // HU07: las fotos que mira el Anfitrión
+        }
     }
     private val fotoRepository: FotoRepository by lazy { FotoRepositoryImpl(contexto) }
     private val obraRepository: ObraRepository by lazy { ObraRepositoryImpl(auth, baseDeDatos, fotoRepository) }
@@ -181,4 +198,14 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val crearDestinoCamara by lazy { CrearDestinoCamaraUseCase(fotoRepository) }
     override val prepararFoto by lazy { PrepararFotoUseCase(fotoRepository) }
     override val descartarFoto by lazy { DescartarFotoUseCase(fotoRepository) }
+    // HU07: revisión de solicitudes (Firestore + Retrofit hacia la función analizarSolicitud + Storage)
+    private val revisionRepository: RevisionRepository by lazy {
+        RevisionRepositoryImpl(auth, db, storage, RetrofitAnalisis.crearApi())
+    }
+
+    override val observarSolicitudes by lazy { ObservarSolicitudesUseCase(revisionRepository) }
+    override val observarSolicitudEnRevision by lazy { ObservarSolicitudEnRevisionUseCase(revisionRepository) }
+    override val observarExpertos by lazy { ObservarExpertosUseCase(revisionRepository) }
+    override val analizarSolicitud by lazy { AnalizarSolicitudUseCase(revisionRepository) }
+    override val descargarFotoObra by lazy { DescargarFotoObraUseCase(revisionRepository) }
 }
