@@ -109,5 +109,11 @@ service cloud.firestore {
         match /obras_ia/{id} {
           allow read, write: if false;
         }
+        // HU07 · Parte 2: token de notificaciones (FCM) de cada usuario. Solo el dueño lo escribe;
+        // la Cloud Function decidirSolicitud lo lee con permisos de administrador.
+        match /tokens/{uid} {
+          allow read, write: if esDueno(uid);
+        }
+
   }
 }
