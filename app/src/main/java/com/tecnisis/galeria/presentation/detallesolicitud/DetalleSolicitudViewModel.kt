@@ -12,6 +12,12 @@ import com.tecnisis.galeria.domain.model.EstadoAnalisis
 import com.tecnisis.galeria.domain.model.EstadoSolicitud
 import com.tecnisis.galeria.domain.model.RevisionError
 import com.tecnisis.galeria.domain.model.seleccionInicial
+import com.tecnisis.galeria.domain.model.CopiaDocumento
+import com.tecnisis.galeria.domain.model.DecisionError
+import com.tecnisis.galeria.domain.model.motivoValido
+import com.tecnisis.galeria.domain.usecase.AprobarSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoUseCase
+import com.tecnisis.galeria.domain.usecase.RechazarSolicitudUseCase
 import com.tecnisis.galeria.domain.usecase.AnalizarSolicitudUseCase
 import com.tecnisis.galeria.domain.usecase.DescargarFotoObraUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarExpertosUseCase
@@ -30,7 +36,10 @@ class DetalleSolicitudViewModel(
     private val observarSolicitud: ObservarSolicitudEnRevisionUseCase,
     private val observarExpertos: ObservarExpertosUseCase,
     private val analizarSolicitud: AnalizarSolicitudUseCase,
-    private val descargarFotoObra: DescargarFotoObraUseCase
+    private val descargarFotoObra: DescargarFotoObraUseCase,
+    private val aprobarSolicitud: AprobarSolicitudUseCase,
+    private val rechazarSolicitud: RechazarSolicitudUseCase,
+    private val descargarDocumento: DescargarDocumentoUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetalleSolicitudUiState())
@@ -106,8 +115,12 @@ class DetalleSolicitudViewModel(
         )
     }
 
-    /** Volver (flecha o botón Atrás): si cambió algún Experto, primero pregunta. Devuelve true si puede salir ya. */
+    /**
+     * Volver (flecha o botón Atrás): mientras se guarda la decisión no se sale (se cortaría a la mitad);
+     * si cambió algún Experto, primero pregunta. Devuelve true si puede salir ya.
+     */
     fun onVolverPedido(): Boolean {
+        if (_uiState.value.decidiendo) return false
         if (!_uiState.value.hayCambios) return true
         _uiState.update { it.copy(confirmarSalida = true) }
         return false
@@ -116,6 +129,77 @@ class DetalleSolicitudViewModel(
     fun onCancelarSalida() = _uiState.update { it.copy(confirmarSalida = false) }
 
     fun onAvisoMostrado() = _uiState.update { it.copy(aviso = null) }
+
+    // ---------- Parte 2: aprobar, rechazar y abrir los documentos ----------
+
+    fun onAprobar() {
+        if (_uiState.value.puedeAprobar) _uiState.update { it.copy(dialogo = DialogoDecision.APROBAR) }
+    }
+
+    fun onRechazar() = _uiState.update {
+        it.copy(dialogo = DialogoDecision.RECHAZAR, motivo = "", mostrarErrorMotivo = false)
+    }
+
+    fun onCerrarDialogo() = _uiState.update { it.copy(dialogo = null) }
+
+    fun onMotivo(texto: String) = _uiState.update { it.copy(motivo = texto, mostrarErrorMotivo = false) }
+
+    fun onConfirmarAprobar() {
+        val estado = _uiState.value
+        if (estado.decidiendo) return
+        decidir { aprobarSolicitud(id, estado.obras, estado.expertos, estado.seleccion) }
+    }
+
+    fun onConfirmarRechazo() {
+        val estado = _uiState.value
+        if (estado.decidiendo) return
+        // El motivo se revisa aquí para marcar el campo en rojo sin cerrar el diálogo
+        if (!motivoValido(estado.motivo)) {
+            _uiState.update { it.copy(mostrarErrorMotivo = true) }
+            return
+        }
+        decidir { rechazarSolicitud(id, estado.motivo) }
+    }
+
+    /** Cierra el diálogo, muestra "Generando…" y espera a la función. El cambio llega solo por Firestore. */
+    private fun decidir(accion: suspend () -> Result<Unit>) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(dialogo = null, decidiendo = true) }
+            accion()
+                .onSuccess { _uiState.update { it.copy(hayCambios = false, aviso = "Listo. Se avisó al socio.") } }
+                .onFailure { e -> _uiState.update { it.copy(aviso = mensajeDecision(e)) } }
+            _uiState.update { it.copy(decidiendo = false) }
+        }
+    }
+
+    fun onAbrirDocumento(copia: CopiaDocumento) {
+        if (_uiState.value.abriendo != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(abriendo = copia) }
+            descargarDocumento(id, copia)
+                .onSuccess { ruta -> _uiState.update { it.copy(pdfParaAbrir = ruta) } }
+                .onFailure { e -> _uiState.update { it.copy(aviso = mensajeDecision(e)) } }
+            _uiState.update { it.copy(abriendo = null) }
+        }
+    }
+
+    /** La Route ya abrió el PDF (o avisó que no hay app de PDF). */
+    fun onPdfAbierto(abierto: Boolean) = _uiState.update {
+        it.copy(pdfParaAbrir = null, aviso = if (abierto) it.aviso else "Instala una app para ver PDF (por ejemplo, Google Drive)")
+    }
+
+    private fun mensajeDecision(e: Throwable): String = when (e) {
+        DecisionError.FaltaExperto -> "Todas las obras deben tener Experto para aprobar"
+        DecisionError.MotivoInvalido -> "Escribe el motivo del rechazo"
+        DecisionError.SinConexion -> "Sin conexión. No se guardó nada: inténtalo de nuevo"
+        DecisionError.SinPermiso -> "Tu sesión venció o tu cuenta no es de Anfitrión"
+        DecisionError.YaResuelta -> "Esta solicitud ya fue resuelta"
+        DecisionError.ExpertoNoDisponible -> "Un Experto elegido ya no está disponible. Revisa las obras y vuelve a intentarlo"
+        DecisionError.NoEncontrada -> "La solicitud o el documento ya no existe"
+        DecisionError.PdfNoGenerado -> "No se pudo generar el documento PDF"
+        is DecisionError.Servidor -> "No se pudo guardar la decisión (${e.detalle})"
+        else -> "No se pudo completar la acción. Inténtalo de nuevo"
+    }
 
     suspend fun descargarFoto(ruta: String): ByteArray? =
         descargarFotoObra(ruta).getOrNull()
@@ -143,7 +227,10 @@ class DetalleSolicitudViewModel(
                     container.observarSolicitudEnRevision,
                     container.observarExpertos,
                     container.analizarSolicitud,
-                    container.descargarFotoObra
+                    container.descargarFotoObra,
+                    container.aprobarSolicitud,
+                    container.rechazarSolicitud,
+                    container.descargarDocumento
                 )
             }
         }
