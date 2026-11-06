@@ -79,6 +79,9 @@ import com.tecnisis.galeria.data.repository.SeguimientoRepositoryImpl
 import com.tecnisis.galeria.domain.repository.SeguimientoRepository
 import com.tecnisis.galeria.domain.usecase.ProgramarSeguimientoUseCase
 import com.tecnisis.galeria.domain.usecase.SincronizarSolicitudesUseCase
+import com.tecnisis.galeria.data.repository.AvisosRepositoryImpl
+import com.tecnisis.galeria.domain.repository.AvisosRepository
+import com.tecnisis.galeria.domain.usecase.GuardarTokenUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -130,6 +133,7 @@ interface AppContainer {
     val descargarDocumento: DescargarDocumentoUseCase
     val sincronizarSolicitudes: SincronizarSolicitudesUseCase
     val programarSeguimiento: ProgramarSeguimientoUseCase
+    val guardarToken: GuardarTokenUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -153,7 +157,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val iniciarSesion by lazy { IniciarSesionUseCase(authRepository) }
     override val obtenerUsuarioActual by lazy { ObtenerUsuarioActualUseCase(authRepository) }
     override val haySesionActiva by lazy { HaySesionActivaUseCase(authRepository) }
-    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository, socioRepository) } // HU05
+    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository, socioRepository, avisosRepository) } // HU05 + HU07
 
     override val registrarCuenta by lazy { RegistrarCuentaUseCase(authRepository) }
     override val enviarPostulacion by lazy {
@@ -188,8 +192,8 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val observarMiPerfil by lazy { ObservarMiPerfilUseCase(socioRepository) }
     override val sincronizarPerfil by lazy { SincronizarPerfilUseCase(socioRepository) }
     override val programarSincronizacion by lazy {
-        // HU06: también reintenta los envíos. HU07: baja las decisiones a Room
-        ProgramarSincronizacionUseCase(socioRepository, envioScheduler, seguimientoRepository)
+        // HU06: también reintenta los envíos. HU07: baja las decisiones y registra el token de avisos
+        ProgramarSincronizacionUseCase(socioRepository, envioScheduler, seguimientoRepository, avisosRepository)
     }
     override val observarConexion by lazy { ObservarConexionUseCase(conectividadRepository) }
 
@@ -238,4 +242,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     }
     override val sincronizarSolicitudes by lazy { SincronizarSolicitudesUseCase(seguimientoRepository) }
     override val programarSeguimiento by lazy { ProgramarSeguimientoUseCase(seguimientoRepository) }
+    // HU07 · Parte 2: token de Firebase Cloud Messaging en tokens/{uid}
+    private val avisosRepository: AvisosRepository by lazy { AvisosRepositoryImpl(auth, db, alcanceApp) }
+    override val guardarToken by lazy { GuardarTokenUseCase(avisosRepository) }
 }
