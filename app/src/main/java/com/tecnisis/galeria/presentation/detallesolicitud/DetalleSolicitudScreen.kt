@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
@@ -49,11 +50,13 @@ import com.tecnisis.galeria.domain.model.CopiaDocumento
 import com.tecnisis.galeria.domain.model.EstadoAnalisis
 import com.tecnisis.galeria.domain.model.EstadoEspecialista
 import com.tecnisis.galeria.domain.model.EstadoSolicitud
+import com.tecnisis.galeria.domain.model.MOTIVO_MAXIMO
 import com.tecnisis.galeria.domain.model.PerfilEspecialista
 import com.tecnisis.galeria.domain.model.ObraEnRevision
 import com.tecnisis.galeria.domain.model.SolicitudEnRevision
 import com.tecnisis.galeria.domain.model.Tecnica
 import com.tecnisis.galeria.domain.model.seleccionInicial
+import com.tecnisis.galeria.presentation.componentes.abrirPdf
 import com.tecnisis.galeria.presentation.componentes.Aviso
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
 import com.tecnisis.galeria.presentation.componentes.ChipColor
@@ -84,9 +87,15 @@ fun DetalleSolicitudRoute(
         viewModel.onAvisoMostrado()
     }
 
+    val contexto = LocalContext.current
+    LaunchedEffect(uiState.pdfParaAbrir) {
+        val ruta = uiState.pdfParaAbrir ?: return@LaunchedEffect
+        viewModel.onPdfAbierto(abrirPdf(contexto, ruta))
+    }
+
     val pedirVolver = { if (viewModel.onVolverPedido()) onVolver() }
-    // Botón Atrás del celular: solo se intercepta si hay cambios de Experto sin aprobar
-    BackHandler(enabled = uiState.hayCambios) { pedirVolver() }
+    // Botón Atrás: se intercepta si hay cambios de Experto sin aprobar o si se está guardando la decisión
+    BackHandler(enabled = uiState.hayCambios || uiState.decidiendo) { pedirVolver() }
 
     DetalleSolicitudScreen(
         uiState = uiState,
@@ -94,8 +103,31 @@ fun DetalleSolicitudRoute(
         onVolver = pedirVolver,
         onReintentar = viewModel::analizar,
         onCambiar = viewModel::onCambiar,
-        descargarFoto = viewModel::descargarFoto
+        descargarFoto = viewModel::descargarFoto,
+        onAprobar = viewModel::onAprobar,
+        onRechazar = viewModel::onRechazar,
+        onAbrirDocumento = viewModel::onAbrirDocumento
     )
+
+    when (uiState.dialogo) {
+        DialogoDecision.APROBAR -> DialogoAprobar(
+            nombreSocio = uiState.solicitud?.nombreSocio.orEmpty(),
+            filas = uiState.filasAprobacion,
+            onAprobar = viewModel::onConfirmarAprobar,
+            onCancelar = viewModel::onCerrarDialogo
+        )
+        DialogoDecision.RECHAZAR -> DialogoRechazar(
+            cantidadObras = uiState.obras.size,
+            motivo = uiState.motivo,
+            maximo = MOTIVO_MAXIMO,
+            mostrarError = uiState.mostrarErrorMotivo,
+            sugerencia = uiState.sugerenciaMotivo,
+            onMotivo = viewModel::onMotivo,
+            onRechazar = viewModel::onConfirmarRechazo,
+            onCancelar = viewModel::onCerrarDialogo
+        )
+        null -> Unit
+    }
 
     uiState.obraEnHoja?.let { obra ->
         HojaCambiarExperto(
