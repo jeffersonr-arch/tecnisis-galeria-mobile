@@ -75,6 +75,10 @@ import com.tecnisis.galeria.domain.repository.DecisionRepository
 import com.tecnisis.galeria.domain.usecase.AprobarSolicitudUseCase
 import com.tecnisis.galeria.domain.usecase.DescargarDocumentoUseCase
 import com.tecnisis.galeria.domain.usecase.RechazarSolicitudUseCase
+import com.tecnisis.galeria.data.repository.SeguimientoRepositoryImpl
+import com.tecnisis.galeria.domain.repository.SeguimientoRepository
+import com.tecnisis.galeria.domain.usecase.ProgramarSeguimientoUseCase
+import com.tecnisis.galeria.domain.usecase.SincronizarSolicitudesUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -124,6 +128,8 @@ interface AppContainer {
     val aprobarSolicitud: AprobarSolicitudUseCase
     val rechazarSolicitud: RechazarSolicitudUseCase
     val descargarDocumento: DescargarDocumentoUseCase
+    val sincronizarSolicitudes: SincronizarSolicitudesUseCase
+    val programarSeguimiento: ProgramarSeguimientoUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -182,7 +188,8 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val observarMiPerfil by lazy { ObservarMiPerfilUseCase(socioRepository) }
     override val sincronizarPerfil by lazy { SincronizarPerfilUseCase(socioRepository) }
     override val programarSincronizacion by lazy {
-        ProgramarSincronizacionUseCase(socioRepository, envioScheduler) // HU06: también reintenta los envíos
+        // HU06: también reintenta los envíos. HU07: baja las decisiones a Room
+        ProgramarSincronizacionUseCase(socioRepository, envioScheduler, seguimientoRepository)
     }
     override val observarConexion by lazy { ObservarConexionUseCase(conectividadRepository) }
 
@@ -225,4 +232,10 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val aprobarSolicitud by lazy { AprobarSolicitudUseCase(decisionRepository) }
     override val rechazarSolicitud by lazy { RechazarSolicitudUseCase(decisionRepository) }
     override val descargarDocumento by lazy { DescargarDocumentoUseCase(decisionRepository) }
+    // HU07 · Parte 2: la decisión baja de Firestore a Room (WorkManager)
+    private val seguimientoRepository: SeguimientoRepository by lazy {
+        SeguimientoRepositoryImpl(contexto, auth, db, baseDeDatos)
+    }
+    override val sincronizarSolicitudes by lazy { SincronizarSolicitudesUseCase(seguimientoRepository) }
+    override val programarSeguimiento by lazy { ProgramarSeguimientoUseCase(seguimientoRepository) }
 }
