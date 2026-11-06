@@ -1,5 +1,13 @@
 package com.tecnisis.galeria.presentation.obras
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.tecnisis.galeria.presentation.componentes.abrirPdf
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -92,14 +100,35 @@ fun MisObrasRoute(
         viewModel.onMensajeMostrado()
     }
 
+    // El documento ya está en la caché; se abre con la app de PDF del celular
+    val contexto = LocalContext.current
+    LaunchedEffect(uiState.pdfParaAbrir) {
+        val ruta = uiState.pdfParaAbrir ?: return@LaunchedEffect
+        viewModel.onPdfAbierto(abrirPdf(contexto, ruta))
+    }
+
+    // El permiso de notificaciones (Android 13+) se pide al confirmar el envío.
+    // Si lo niega, todo sigue igual: la decisión igual aparece en Mis obras.
+    val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val confirmarEnvio = {
+        viewModel.onConfirmarEnvio()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(contexto, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            pedirPermiso.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     MisObrasScreen(
         uiState = uiState,
         snackbarHostState = snackbar,
         onRegistrar = onRegistrar,
         onAbrirObra = onEditar,
         onEnviar = viewModel::onEnviar,
-        onConfirmarEnvio = viewModel::onConfirmarEnvio,
-        onCancelarEnvio = viewModel::onCancelarEnvio
+        onConfirmarEnvio = confirmarEnvio,
+        onCancelarEnvio = viewModel::onCancelarEnvio,
+        onVerDocumento = viewModel::onVerDocumento
     )
 }
 
