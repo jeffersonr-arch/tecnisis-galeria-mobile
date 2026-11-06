@@ -31,7 +31,8 @@ data class ObraEnRevision(
     val fotoRuta: String,                      // obras/{uid}/{idObra}.jpg en Storage
     val descripcionIa: String?,                // null hasta que Gemini la describe
     val candidatos: List<CandidatoExperto>,    // de mayor a menor afinidad
-    val recomendadoUid: String?                // null = ningún Experto disponible
+    val recomendadoUid: String?,               // null = ningún Experto disponible
+    val expertoAsignadoUid: String? = null     // Parte 2: el que quedó al aprobar (puede no ser el recomendado)
 )
 
 data class SolicitudEnRevision(
@@ -43,7 +44,9 @@ data class SolicitudEnRevision(
     val analisis: EstadoAnalisis,
     val analisisDesde: Long?,                  // hora del servidor en que empezó el análisis
     val fechaEnvio: Long?,
-    val obras: List<ObraEnRevision>
+    val obras: List<ObraEnRevision>,
+    val motivoRechazo: String? = null,         // Parte 2: solo si se rechazó
+    val fechaResolucion: Long? = null          // Parte 2: cuándo se aprobó o rechazó
 )
 
 /** Una obra dentro de la tarjeta de la lista (solo lo necesario para la miniatura). */
