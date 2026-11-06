@@ -411,7 +411,13 @@ private fun chipDeObra(obra: Obra, estadoSolicitud: EstadoSolicitud): Triple<Str
         EstadoSolicitud.POR_ENVIAR ->
             if (obra.fotoSubida) Triple("Foto subida", c.tertiaryContainer, c.onTertiaryContainer)
             else Triple("Foto en espera", c.secondaryContainer, c.onSecondaryContainer)
-        else -> Triple(obra.estado.etiqueta, c.primaryContainer, c.onPrimaryContainer)
+        else -> when (obra.estado) {
+            EstadoObra.NO_ADMITIDA, EstadoObra.RECHAZADA ->
+                Triple(obra.estado.etiqueta, c.errorContainer, c.onErrorContainer)
+            EstadoObra.ACEPTADA, EstadoObra.LISTA_EXHIBICION ->
+                Triple(obra.estado.etiqueta, c.tertiaryContainer, c.onTertiaryContainer)
+            else -> Triple(obra.estado.etiqueta, c.primaryContainer, c.onPrimaryContainer)
+        }
     }
 }
 
