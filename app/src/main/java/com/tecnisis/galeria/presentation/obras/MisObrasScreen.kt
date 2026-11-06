@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Mic
@@ -61,6 +62,7 @@ import com.tecnisis.galeria.domain.model.SolicitudExhibicion
 import com.tecnisis.galeria.domain.model.Tecnica
 import com.tecnisis.galeria.presentation.componentes.BotonPrincipal
 import com.tecnisis.galeria.presentation.componentes.EstadoPaso
+import com.tecnisis.galeria.presentation.componentes.FilaPdf
 import com.tecnisis.galeria.presentation.componentes.FotoObra
 import com.tecnisis.galeria.presentation.componentes.LineaDeAvance
 import com.tecnisis.galeria.presentation.componentes.PasoAvance
@@ -73,6 +75,7 @@ import java.util.Date
 import java.util.Locale
 
 private val formatoEnvio = SimpleDateFormat("d MMM · h:mm a", Locale.forLanguageTag("es-PE"))
+private val formatoDia = SimpleDateFormat("d MMM", Locale.forLanguageTag("es-PE"))
 
 @Composable
 fun MisObrasRoute(
@@ -108,7 +111,8 @@ fun MisObrasScreen(
     onAbrirObra: (String) -> Unit,
     onEnviar: () -> Unit,
     onConfirmarEnvio: () -> Unit,
-    onCancelarEnvio: () -> Unit
+    onCancelarEnvio: () -> Unit,
+    onVerDocumento: () -> Unit = {}
 ) {
     Box(
         Modifier
@@ -119,7 +123,7 @@ fun MisObrasScreen(
         when {
             uiState.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
             uiState.sinObras -> EstadoVacio(onRegistrar)
-            else -> ListaObras(uiState, onRegistrar, onAbrirObra, onEnviar)
+            else -> ListaObras(uiState, onRegistrar, onAbrirObra, onEnviar, onVerDocumento)
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
@@ -192,7 +196,8 @@ private fun ListaObras(
     uiState: MisObrasUiState,
     onRegistrar: () -> Unit,
     onAbrirObra: (String) -> Unit,
-    onEnviar: () -> Unit
+    onEnviar: () -> Unit,
+    onVerDocumento: () -> Unit
 ) {
     val solicitud = uiState.solicitud ?: return
     val c = MaterialTheme.colorScheme
@@ -205,7 +210,7 @@ private fun ListaObras(
         Spacer(Modifier.height(24.dp))
         Text("Mis obras", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 4.dp))
         Spacer(Modifier.height(16.dp))
-        TarjetaSolicitud(solicitud, uiState.hayConexion)
+        TarjetaSolicitud(solicitud, uiState.hayConexion, uiState.abriendoDocumento, onVerDocumento)
         Spacer(Modifier.height(22.dp))
         TituloSeccion("Obras · ${solicitud.obras.size}")
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -267,7 +272,7 @@ private fun ListaObras(
 }
 
 @Composable
-private fun TarjetaSolicitud(solicitud: SolicitudExhibicion, hayConexion: Boolean) {
+private fun TarjetaSolicitud(solicitud: SolicitudExhibicion, hayConexion: Boolean, abriendoDocumento: Boolean, onVerDocumento: () -> Unit) {
     val c = MaterialTheme.colorScheme
     val cantidad = solicitud.obras.size
     TarjetaGaleria {
@@ -286,13 +291,58 @@ private fun TarjetaSolicitud(solicitud: SolicitudExhibicion, hayConexion: Boolea
             )
             EstadoSolicitud.POR_ENVIAR -> AvisoEnvio(hayConexion)
             EstadoSolicitud.ENVIADA -> LineaDeAvance(pasosEnviada(solicitud))
-            EstadoSolicitud.APROBADA, EstadoSolicitud.RECHAZADA -> Text(
-                "El Anfitrión ya revisó esta solicitud.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.onSurfaceVariant
-            )
+            EstadoSolicitud.APROBADA, EstadoSolicitud.RECHAZADA ->
+                Resolucion(solicitud, abriendoDocumento, onVerDocumento)
         }
     }
+}
+
+/** Avance, motivo (si se rechazó) y su copia del documento. */
+@Composable
+private fun Resolucion(solicitud: SolicitudExhibicion, abriendoDocumento: Boolean, onVerDocumento: () -> Unit) {
+    val c = MaterialTheme.colorScheme
+    val aprobada = solicitud.estado == EstadoSolicitud.APROBADA
+    LineaDeAvance(pasosResuelta(solicitud))
+    if (!aprobada && !solicitud.motivoRechazo.isNullOrBlank()) {
+        Spacer(Modifier.height(4.dp))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(c.errorContainer)
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
+            Text("MOTIVO DEL ANFITRIÓN", style = MaterialTheme.typography.labelSmall, color = c.onErrorContainer)
+            Spacer(Modifier.height(4.dp))
+            Text(solicitud.motivoRechazo, style = MaterialTheme.typography.bodyMedium, color = c.onErrorContainer)
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    FilaPdf(
+        titulo = if (aprobada) "Mi documento de aprobación" else "Mi documento de rechazo",
+        subtitulo = null,
+        onClick = onVerDocumento,
+        cargando = abriendoDocumento,
+        icono = Icons.Outlined.FileDownload,
+        fondo = c.surfaceVariant
+    )
+}
+
+private fun pasosResuelta(s: SolicitudExhibicion): List<PasoAvance> {
+    val enviada = PasoAvance(
+        "Solicitud enviada",
+        listOfNotNull(s.enviadaEn?.let { formatoEnvio.format(Date(it)) }, textoObras(s.obras.size)).joinToString(" · "),
+        EstadoPaso.COMPLETO
+    )
+    val fecha = s.resueltaEn?.let { " el ${formatoDia.format(Date(it))}" }.orEmpty()
+    return if (s.estado == EstadoSolicitud.APROBADA) listOf(
+        enviada,
+        PasoAvance("Asignación de expertos", "Aprobada$fecha", EstadoPaso.COMPLETO),
+        PasoAvance("Evaluación artística", "Tus obras están con los Expertos", EstadoPaso.ACTUAL)
+    ) else listOf(
+        enviada,
+        PasoAvance("Revisión del Anfitrión", "Rechazada$fecha", EstadoPaso.COMPLETO)
+    )
 }
 
 @Composable
@@ -465,12 +515,20 @@ private fun obraEjemplo(
 )
 
 private fun solicitudEjemplo(estado: EstadoSolicitud): SolicitudExhibicion {
-    val estadoObra = if (estado == EstadoSolicitud.ENVIADA) EstadoObra.ENVIADA else EstadoObra.BORRADOR
+    val estadoObra = when (estado) {
+        EstadoSolicitud.ENVIADA -> EstadoObra.ENVIADA
+        EstadoSolicitud.APROBADA -> EstadoObra.EN_EVALUACION
+        EstadoSolicitud.RECHAZADA -> EstadoObra.NO_ADMITIDA
+        else -> EstadoObra.BORRADOR
+    }
+    val enviada = estado != EstadoSolicitud.BORRADOR && estado != EstadoSolicitud.POR_ENVIAR
     return SolicitudExhibicion(
         id = "s1",
         estado = estado,
         creadaEn = 0L,
-        enviadaEn = if (estado == EstadoSolicitud.ENVIADA) 1_794_000_000_000 else null,
+        enviadaEn = if (enviada) 1_794_000_000_000 else null,
+        motivoRechazo = if (estado == EstadoSolicitud.RECHAZADA) "No hay Experto disponible para Textil en este momento." else null,
+        resueltaEn = if (enviada && estado != EstadoSolicitud.ENVIADA) 1_794_100_000_000 else null,
         obras = listOf(
             obraEjemplo("1", "Mañana en Paracas", Tecnica.OLEO, 60.0, 80.0, nota = "Amanecer", subida = true, estado = estadoObra),
             obraEjemplo("2", "Telar de Ocongate", Tecnica.TEXTIL, 120.0, 90.0, estado = estadoObra),
@@ -513,3 +571,15 @@ private fun MisObrasPendientePreview() = VistaPrevia(
 @Composable
 private fun MisObrasEnviadaPreview() =
     VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEjemplo(EstadoSolicitud.ENVIADA)))
+
+@Preview(name = "Aprobada · claro", showBackground = true, heightDp = 1000)
+@Preview(name = "Aprobada · nocturno", showBackground = true, heightDp = 1000, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MisObrasAprobadaPreview() =
+    VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEjemplo(EstadoSolicitud.APROBADA)))
+
+@Preview(name = "Rechazada · claro", showBackground = true, heightDp = 1000)
+@Preview(name = "Rechazada · nocturno", showBackground = true, heightDp = 1000, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MisObrasRechazadaPreview() =
+    VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEjemplo(EstadoSolicitud.RECHAZADA)))
