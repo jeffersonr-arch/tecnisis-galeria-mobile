@@ -35,6 +35,7 @@ import com.tecnisis.galeria.presentation.obras.RegistrarObraViewModel
 import com.tecnisis.galeria.presentation.perfil.PerfilRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
+import com.tecnisis.galeria.presentation.solicitudes.SolicitudesRoute
 
 @Composable
 fun GaleriaNavHost(
@@ -178,6 +179,9 @@ fun GaleriaNavHost(
                 )
             ) {
                 DetallePostulacionRoute(onVolver = volver)
+            }
+            composable(Pantalla.SolicitudesObras.name) {
+                SolicitudesRoute(onAbrir = { })
             }
         }
     }
