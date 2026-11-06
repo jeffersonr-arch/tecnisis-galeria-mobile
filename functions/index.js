@@ -405,3 +405,151 @@ exports.analizarSolicitud = onRequest(
       }
     },
 );
+
+// =====================================================================================
+// HU07 · Parte 2: el Anfitrión aprueba o rechaza la solicitud (callable, como resolverPostulacion)
+//   1) La app ya subió los 2 PDF: aquí se revisa que existan antes de cambiar nada.
+//   2) En una transacción: revalida cada Experto (domina la técnica, activo y con cupo),
+//      cambia la solicitud y sus obras, y suma la carga de cada Experto.
+//   3) Avisa al socio con Firebase Cloud Messaging, si tiene token.
+// =====================================================================================
+const {getMessaging} = require("firebase-admin/messaging");
+
+const MOTIVO_MAXIMO = 500; // igual que MOTIVO_MAXIMO en la app
+const COPIAS = ["archivo.pdf", "artista.pdf"];
+
+/** La app lee details.motivo para saber qué condición falló. */
+function noCumple(mensaje, motivo) {
+  return new HttpsError("failed-precondition", mensaje, {motivo});
+}
+
+exports.decidirSolicitud = onCall(async (request) => {
+  // 1) Sesión y rol
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Debes iniciar sesión");
+  }
+  const anfitrionUid = request.auth.uid;
+  const anfitrion = await db.doc(`usuarios/${anfitrionUid}`).get();
+  if (!anfitrion.exists || anfitrion.get("rol") !== "anfitrion") {
+    throw new HttpsError("permission-denied", "Solo el Anfitrión puede aprobar o rechazar solicitudes");
+  }
+
+  // 2) Datos que manda la app: {solicitudId, decision, asignaciones, motivo}
+  const datos = request.data || {};
+  const solicitudId = typeof datos.solicitudId === "string" ? datos.solicitudId : "";
+  const decision = datos.decision;
+  const motivo = typeof datos.motivo === "string" ? datos.motivo.trim() : "";
+  const asignaciones = datos.asignaciones && typeof datos.asignaciones === "object" ? datos.asignaciones : {};
+  if (solicitudId === "") {
+    throw new HttpsError("invalid-argument", "Falta el id de la solicitud");
+  }
+  if (!["aprobar", "rechazar"].includes(decision)) {
+    throw new HttpsError("invalid-argument", "Decisión no válida");
+  }
+  if (decision === "rechazar" && (motivo.length < 1 || motivo.length > MOTIVO_MAXIMO)) {
+    throw new HttpsError("invalid-argument", "El motivo es obligatorio (1 a 500 caracteres)");
+  }
+
+  // 3) Los 2 PDF deben estar en Storage antes de cambiar nada
+  const bucket = getStorage().bucket();
+  for (const copia of COPIAS) {
+    const [existe] = await bucket.file(`documentos/${solicitudId}/${copia}`).exists();
+    if (!existe) {
+      throw noCumple("Faltan los documentos de la solicitud", "faltan_documentos");
+    }
+  }
+
+  // 4) Todo junto o nada: solicitud, obras y carga de los Expertos
+  const refSolicitud = db.doc(`solicitudes/${solicitudId}`);
+  const resultado = await db.runTransaction(async (tx) => {
+    // En una transacción, todas las lecturas van antes de las escrituras
+    const s = await tx.get(refSolicitud);
+    if (!s.exists) {
+      throw new HttpsError("not-found", "La solicitud no existe");
+    }
+    if (s.get("estado") !== "enviada") {
+      throw noCumple("La solicitud ya fue resuelta", "ya_resuelta");
+    }
+    const obras = (await tx.get(db.collection("obras").where("solicitudId", "==", solicitudId))).docs;
+    if (obras.length === 0) {
+      throw new HttpsError("not-found", "La solicitud no tiene obras");
+    }
+    const comun = {
+      resueltaPor: anfitrionUid,
+      fechaResolucion: FieldValue.serverTimestamp(),
+      documentos: COPIAS.map((c) => `documentos/${solicitudId}/${c}`),
+    };
+
+    if (decision === "rechazar") {
+      tx.update(refSolicitud, {...comun, estado: "rechazada", motivoRechazo: motivo});
+      obras.forEach((o) => tx.update(o.ref, {estado: "no_admitida"}));
+      return {estado: "rechazada", uidSocio: s.get("uid"), cantidad: obras.length};
+    }
+
+    // Aprobar: cada obra con un Experto, y cuántas obras de esta solicitud recibe cada uno
+    const porExperto = {};
+    for (const o of obras) {
+      const uid = asignaciones[o.id];
+      if (typeof uid !== "string" || uid === "") {
+        throw noCumple(`La obra "${o.get("titulo")}" no tiene Experto`, "experto_no_disponible");
+      }
+      porExperto[uid] = (porExperto[uid] || 0) + 1;
+    }
+    const expertos = {};
+    for (const uid of Object.keys(porExperto)) {
+      const e = await tx.get(db.doc(`expertos/${uid}`));
+      if (!e.exists) {
+        throw noCumple("Uno de los Expertos elegidos ya no existe", "experto_no_disponible");
+      }
+      expertos[uid] = e;
+    }
+    // Misma regla que la app: domina la técnica, está activo y su carga más estas obras no pasa de 5
+    for (const o of obras) {
+      const e = expertos[asignaciones[o.id]];
+      const domina = (e.get("tecnicas") || []).includes(o.get("tecnica"));
+      const conCupo = (Number(e.get("carga")) || 0) + porExperto[e.id] <= CARGA_MAXIMA;
+      if (!domina || e.get("estado") !== "activo" || !conCupo) {
+        throw noCumple(`${e.get("nombre")} ya no está disponible para "${o.get("titulo")}"`, "experto_no_disponible");
+      }
+    }
+    tx.update(refSolicitud, {...comun, estado: "aprobada"});
+    obras.forEach((o) => tx.update(o.ref, {
+      estado: "en_evaluacion",
+      expertoUid: asignaciones[o.id],
+      fechaAsignacion: FieldValue.serverTimestamp(),
+    }));
+    for (const [uid, n] of Object.entries(porExperto)) {
+      tx.update(db.doc(`expertos/${uid}`), {carga: FieldValue.increment(n)});
+    }
+    return {estado: "aprobada", uidSocio: s.get("uid"), cantidad: obras.length};
+  });
+
+  // 5) Aviso al socio. Si falla, la decisión ya quedó guardada
+  await avisarSocio(resultado.uidSocio, solicitudId, resultado.estado, resultado.cantidad);
+  logger.info("Solicitud resuelta", {solicitudId, estado: resultado.estado, por: anfitrionUid});
+  return {estado: resultado.estado};
+});
+
+/** Mensaje de datos (no de notificación): la app arma el aviso y baja la decisión a Room. */
+async function avisarSocio(uid, solicitudId, estado, cantidad) {
+  try {
+    const doc = await db.doc(`tokens/${uid}`).get();
+    const token = doc.exists ? doc.get("token") : null;
+    if (!token) {
+      logger.info("El socio no tiene token de avisos", {uid});
+      return;
+    }
+    await getMessaging().send({
+      token,
+      data: {tipo: "decision", solicitudId, estado, cantidad: String(cantidad)},
+      android: {priority: "high"},
+    });
+  } catch (error) {
+    logger.warn("No se pudo avisar al socio", {uid, error: error.message});
+    // Token vencido (cerró sesión o desinstaló la app): se borra para no volver a intentarlo
+    if (error.code === "messaging/registration-token-not-registered" ||
+        error.code === "messaging/invalid-registration-token") {
+      await db.doc(`tokens/${uid}`).delete().catch(() => {});
+    }
+  }
+}
