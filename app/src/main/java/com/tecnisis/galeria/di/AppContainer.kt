@@ -69,6 +69,12 @@ import com.tecnisis.galeria.domain.usecase.VerificarPostulacionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.tecnisis.galeria.data.pdf.GeneradorPdf
+import com.tecnisis.galeria.data.repository.DecisionRepositoryImpl
+import com.tecnisis.galeria.domain.repository.DecisionRepository
+import com.tecnisis.galeria.domain.usecase.AprobarSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoUseCase
+import com.tecnisis.galeria.domain.usecase.RechazarSolicitudUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -114,6 +120,10 @@ interface AppContainer {
     val observarExpertos: ObservarExpertosUseCase
     val analizarSolicitud: AnalizarSolicitudUseCase
     val descargarFotoObra: DescargarFotoObraUseCase
+    // Sprint 3 · HU07 · Parte 2
+    val aprobarSolicitud: AprobarSolicitudUseCase
+    val rechazarSolicitud: RechazarSolicitudUseCase
+    val descargarDocumento: DescargarDocumentoUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -208,4 +218,11 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val observarExpertos by lazy { ObservarExpertosUseCase(revisionRepository) }
     override val analizarSolicitud by lazy { AnalizarSolicitudUseCase(revisionRepository) }
     override val descargarFotoObra by lazy { DescargarFotoObraUseCase(revisionRepository) }
+    // HU07 · Parte 2: decisión del Anfitrión (PDF + Storage + Cloud Function decidirSolicitud)
+    private val decisionRepository: DecisionRepository by lazy {
+        DecisionRepositoryImpl(contexto, auth, db, storage, functions, GeneradorPdf())
+    }
+    override val aprobarSolicitud by lazy { AprobarSolicitudUseCase(decisionRepository) }
+    override val rechazarSolicitud by lazy { RechazarSolicitudUseCase(decisionRepository) }
+    override val descargarDocumento by lazy { DescargarDocumentoUseCase(decisionRepository) }
 }
