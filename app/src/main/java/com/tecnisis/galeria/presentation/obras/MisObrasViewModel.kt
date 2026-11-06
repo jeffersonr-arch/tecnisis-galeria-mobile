@@ -8,6 +8,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.tecnisis.galeria.GaleriaApplication
 import com.tecnisis.galeria.domain.model.ObraError
+import com.tecnisis.galeria.domain.model.CopiaDocumento
+import com.tecnisis.galeria.domain.model.DecisionError
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoUseCase
 import com.tecnisis.galeria.domain.usecase.EnviarSolicitudUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarConexionUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarMiSolicitudUseCase
@@ -23,13 +26,16 @@ import kotlinx.coroutines.launch
 private data class EstadoLocal(
     val confirmandoEnvio: Boolean = false,
     val enviando: Boolean = false,
-    val mensaje: String? = null
+    val mensaje: String? = null,
+    val abriendoDocumento: Boolean = false,
+    val pdfParaAbrir: String? = null
 )
 
 class MisObrasViewModel(
     observarMiSolicitud: ObservarMiSolicitudUseCase,
     observarConexion: ObservarConexionUseCase,
-    private val enviarSolicitud: EnviarSolicitudUseCase
+    private val enviarSolicitud: EnviarSolicitudUseCase,
+    private val descargarDocumento: DescargarDocumentoUseCase
 ) : ViewModel() {
 
     private val local = MutableStateFlow(EstadoLocal())
@@ -46,7 +52,9 @@ class MisObrasViewModel(
             hayConexion = conexion,
             confirmandoEnvio = l.confirmandoEnvio,
             enviando = l.enviando,
-            mensaje = l.mensaje
+            mensaje = l.mensaje,
+            abriendoDocumento = l.abriendoDocumento,
+            pdfParaAbrir = l.pdfParaAbrir
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MisObrasUiState())
 
@@ -65,6 +73,30 @@ class MisObrasViewModel(
 
     fun onMensajeMostrado() = local.update { it.copy(mensaje = null) }
 
+    /** Descarga la copia del artista (artista.pdf) de la solicitud resuelta. */
+    fun onVerDocumento() {
+        val solicitud = uiState.value.solicitud ?: return
+        if (local.value.abriendoDocumento) return
+        viewModelScope.launch {
+            local.update { it.copy(abriendoDocumento = true) }
+            descargarDocumento(solicitud.id, CopiaDocumento.ARTISTA)
+                .onSuccess { ruta -> local.update { it.copy(pdfParaAbrir = ruta) } }
+                .onFailure { e -> local.update { it.copy(mensaje = mensajeDocumento(e)) } }
+            local.update { it.copy(abriendoDocumento = false) }
+        }
+    }
+
+    /** La Route ya abrió el PDF (o avisó que no hay app de PDF). */
+    fun onPdfAbierto(abierto: Boolean) = local.update {
+        it.copy(pdfParaAbrir = null, mensaje = if (abierto) it.mensaje else "Instala una app para ver PDF (por ejemplo, Google Drive)")
+    }
+
+    private fun mensajeDocumento(error: Throwable): String = when (error) {
+        DecisionError.SinConexion -> "Necesitas internet para descargar tu documento"
+        DecisionError.SinPermiso, DecisionError.NoEncontrada -> "Tu documento todavía no está disponible. Inténtalo en unos minutos"
+        else -> "No se pudo abrir tu documento. Inténtalo de nuevo"
+    }
+
     private fun mensajeDe(error: Throwable): String = when (error) {
         ObraError.SinObras -> "Agrega al menos una obra antes de enviar"
         ObraError.SolicitudNoEditable -> "Tu solicitud ya se envió"
@@ -76,7 +108,7 @@ class MisObrasViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as GaleriaApplication).container
-                MisObrasViewModel(container.observarMiSolicitud, container.observarConexion, container.enviarSolicitud)
+                MisObrasViewModel(container.observarMiSolicitud, container.observarConexion, container.enviarSolicitud, container.descargarDocumento)
             }
         }
     }

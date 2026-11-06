@@ -5,11 +5,13 @@ import com.tecnisis.galeria.domain.model.SolicitudExhibicion
 
 data class MisObrasUiState(
     val cargando: Boolean = true,
-    val solicitud: SolicitudExhibicion? = null,   // null = nunca armó una
+    val solicitud: SolicitudExhibicion? = null,
     val hayConexion: Boolean = true,
     val confirmandoEnvio: Boolean = false,
     val enviando: Boolean = false,
-    val mensaje: String? = null
+    val mensaje: String? = null,
+    val abriendoDocumento: Boolean = false,
+    val pdfParaAbrir: String? = null
 ) {
     val obras: List<Obra>
         get() = solicitud?.obras.orEmpty()
