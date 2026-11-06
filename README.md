@@ -51,8 +51,17 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - Reglas de Firestore y de Storage: solo el Socio Activo crea sus solicitudes y sube sus fotos
 - Pruebas unitarias del formulario y del envío
 
+### HU07 (Parte 1): Recomendación de Experto con IA
+- Pestaña Solicitudes del Anfitrión en tiempo real (por revisar y resueltas), con el detalle de cada solicitud
+- Función HTTP `analizarSolicitud` llamada desde la app con Retrofit y corrutinas; verifica la sesión y el rol Anfitrión
+- IA generativa: Gemini Flash (`gemini-3.6-flash`) describe cada obra a partir de su foto y sus datos
+- Recomendación basada en contenido: embeddings `gemini-embedding-2` (768 dimensiones) y similitud coseno; solo compiten los Expertos que dominan la técnica y están disponibles; a igual afinidad, el de menor carga
+- El Anfitrión puede cambiar el Experto recomendado por otro disponible
+- La API key de Gemini es un secreto de Cloud Functions: nunca está en la app ni en el repositorio
+- Pruebas unitarias de las reglas de disponibilidad y selección de Expertos
+
 ## Tecnologías
-Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider
+Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions)
 
 ## Cómo ejecutar
 1. Clonar el repositorio y abrirlo en Android Studio.
@@ -62,7 +71,8 @@ Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Fi
 ## Cloud Functions y reglas
 1. Instalar Node.js y `npm install -g firebase-tools`; luego `firebase login`.
 2. `cd functions` y `npm install`.
-3. Desde la raíz: `firebase deploy --only "functions,firestore:rules,storage"` (requiere el plan Blaze).
+3. Guardar la API key de Gemini como secreto: `firebase functions:secrets:set GEMINI_API_KEY`. La key debe estar restringida a la API de Gemini y vinculada a una cuenta de servicio, y el proyecto necesita crédito prepago en Google AI Studio.
+4. Desde la raíz: `firebase deploy --only "functions,firestore:rules,storage"` (requiere el plan Blaze).
 
 ## Equipo
 - Jefferson Rojas (jeffersonr-arch)
