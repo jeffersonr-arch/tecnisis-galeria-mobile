@@ -17,5 +17,7 @@ fun SolicitudConObras.aDominio() = SolicitudExhibicion(
     estado = EstadoSolicitud.desdeValor(solicitud.estado),
     creadaEn = solicitud.creadaEn,
     enviadaEn = solicitud.enviadaEn,
-    obras = obras.sortedBy { it.creadaEn }.map { it.aDominio() }
+    obras = obras.sortedBy { it.creadaEn }.map { it.aDominio() },
+    motivoRechazo = solicitud.motivoRechazo,
+    resueltaEn = solicitud.resueltaEn
 )

@@ -54,4 +54,12 @@ interface ObraDao {
 
     @Query("UPDATE obra SET fotoUrl = :url WHERE id = :id")
     suspend fun marcarFotoSubida(id: String, url: String)
+
+    // ---------- HU07: sincronización Firestore → Room ----------
+
+    @Query("UPDATE solicitud SET estado = :estado, motivoRechazo = :motivo, resueltaEn = :resueltaEn WHERE id = :id")
+    suspend fun guardarResolucion(id: String, estado: String, motivo: String?, resueltaEn: Long?)
+
+    @Query("UPDATE obra SET estado = :estado WHERE id = :id")
+    suspend fun cambiarEstadoObra(id: String, estado: String)
 }
