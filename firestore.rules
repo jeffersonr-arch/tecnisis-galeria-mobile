@@ -96,5 +96,18 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/solicitudes/$(request.resource.data.solicitudId)).data.uid == request.auth.uid;
       allow update, delete: if false;
     }
+        // HU07: Expertos (Especialistas de Arte). Los crea el script sembrarExpertos; la carga la cambia
+        // la Cloud Function al aprobar (Parte 2). El Anfitrión los lee para elegir; cada Experto, el suyo.
+        match /expertos/{uid} {
+          allow read: if esAnfitrion() || esDueno(uid);
+          allow write: if false;
+        }
+        // HU07: embeddings de Expertos y obras. Solo los usa la función analizarSolicitud (admin).
+        match /expertos_ia/{id} {
+          allow read, write: if false;
+        }
+        match /obras_ia/{id} {
+          allow read, write: if false;
+        }
   }
 }

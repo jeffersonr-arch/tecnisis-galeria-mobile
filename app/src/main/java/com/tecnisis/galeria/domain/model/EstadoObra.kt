@@ -4,8 +4,7 @@ package com.tecnisis.galeria.domain.model
 enum class EstadoObra(val valorFirestore: String, val etiqueta: String) {
     BORRADOR("borrador", "Borrador"),                         // HU06
     ENVIADA("enviada", "Enviada"),                            // HU06
-    CON_EXPERTO("con_experto", "Con experto"),                // HU07: tiene Experto asignado
-    EN_EVALUACION("en_evaluacion", "En evaluación"),          // HU07: la solicitud se aprobó
+    EN_EVALUACION("en_evaluacion", "En evaluación"),          // HU07: la solicitud se aprobó (ya tiene Experto)
     NO_ADMITIDA("no_admitida", "No admitida"),                // HU07: la solicitud se rechazó
     ACEPTADA("aceptada", "Aceptada"),                         // HU08
     RECHAZADA("rechazada", "Rechazada"),                      // HU08
