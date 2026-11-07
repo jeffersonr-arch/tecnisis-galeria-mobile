@@ -512,11 +512,17 @@ exports.decidirSolicitud = onCall(async (request) => {
         throw noCumple(`${e.get("nombre")} ya no está disponible para "${o.get("titulo")}"`, "experto_no_disponible");
       }
     }
+    // HU08: el Especialista de Arte no lee la ficha del socio; se copian en cada obra solo su nombre y su número
+    const socio = await tx.get(db.doc(`socios/${s.get("uid")}`));
+    const nombreSocio = socio.exists ? (socio.get("nombreCompleto") || null) : null;
+    const numeroSocio = socio.exists ? (socio.get("numeroSocio") || null) : null;
     tx.update(refSolicitud, {...comun, estado: "aprobada"});
     obras.forEach((o) => tx.update(o.ref, {
       estado: "en_evaluacion",
       expertoUid: asignaciones[o.id],
       fechaAsignacion: FieldValue.serverTimestamp(),
+      nombreSocio,
+      numeroSocio,
     }));
     for (const [uid, n] of Object.entries(porExperto)) {
       tx.update(db.doc(`expertos/${uid}`), {carga: FieldValue.increment(n)});
