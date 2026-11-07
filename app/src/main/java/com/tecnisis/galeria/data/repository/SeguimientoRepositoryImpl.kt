@@ -80,7 +80,9 @@ class SeguimientoRepositoryImpl(
                     doc.getTimestamp("fechaResolucion")?.toDate()?.time
                 )
                 obras.forEach { obra ->
-                    obra.getString("estado")?.let { dao.cambiarEstadoObra(obra.id, it) }
+                    obra.getString("estado")?.let { estado ->
+                        dao.guardarEstadoYComentario(obra.id, estado, obra.comentarioVeredicto())
+                    }
                 }
             }
         }
@@ -122,8 +124,13 @@ class SeguimientoRepositoryImpl(
         fotoUrl = getString("fotoUrl"),
         nota = getString("nota").orEmpty(),
         estado = getString("estado") ?: EstadoObra.ENVIADA.valorFirestore,
-        creadaEn = getTimestamp("fechaRegistro")?.toDate()?.time ?: 0L
+        creadaEn = getTimestamp("fechaRegistro")?.toDate()?.time ?: 0L,
+        comentarioVeredicto = comentarioVeredicto()
     )
+
+    /** HU08: lo escribe registrarVeredicto; vacío o ausente = sin comentario. */
+    private fun DocumentSnapshot.comentarioVeredicto(): String? =
+        getString("veredictoComentario")?.takeIf { it.isNotBlank() }
 
     private fun mapear(e: Exception): ObraError = when (e) {
         is FirebaseNetworkException -> ObraError.SinConexion
