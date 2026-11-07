@@ -538,6 +538,14 @@ exports.decidirSolicitud = onCall(async (request) => {
 
 /** Mensaje de datos (no de notificación): la app arma el aviso y baja la decisión a Room. */
 async function avisarSocio(uid, solicitudId, estado, cantidad) {
+  await enviarAviso(uid, {tipo: "decision", solicitudId, estado, cantidad: String(cantidad)});
+}
+
+/**
+ * HU07 y HU08: manda un mensaje de datos de FCM al token del socio (tokens/{uid}).
+ * En FCM, todos los valores de "data" deben ser texto. Si falla, solo se registra: lo que se decidió ya quedó guardado.
+ */
+async function enviarAviso(uid, datos) {
   try {
     const doc = await db.doc(`tokens/${uid}`).get();
     const token = doc.exists ? doc.get("token") : null;
@@ -547,7 +555,7 @@ async function avisarSocio(uid, solicitudId, estado, cantidad) {
     }
     await getMessaging().send({
       token,
-      data: {tipo: "decision", solicitudId, estado, cantidad: String(cantidad)},
+      data: datos,
       android: {priority: "high"},
     });
   } catch (error) {
