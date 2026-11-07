@@ -60,8 +60,17 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - La API key de Gemini es un secreto de Cloud Functions: nunca está en la app ni en el repositorio
 - Pruebas unitarias de las reglas de disponibilidad y selección de Expertos
 
+### HU07 (Parte 2): Aprobación o rechazo con documento por duplicado
+- El Anfitrión aprueba la solicitud solo si todas las obras tienen Experto; puede rechazarla siempre, con motivo obligatorio (hasta 500 caracteres)
+- Documento por duplicado generado en el celular con PdfDocument (copia del archivo de la galería y copia del artista), guardado en Firebase Storage
+- Cloud Function `decidirSolicitud`: revisa que existan los 2 PDF, vuelve a validar cada Experto y, en una transacción, cambia la solicitud y sus obras y suma la carga de cada Experto
+- Notificación al socio con Firebase Cloud Messaging; al tocarla se abre Mis obras
+- Sincronización Firestore → Room con WorkManager: Mis obras muestra Aprobada o Rechazada (con el motivo) y la copia del artista; si el socio cambió de celular, recupera su solicitud
+- Reglas de Storage: el socio solo descarga su copia y solo cuando la solicitud ya está resuelta
+- Pruebas unitarias de la decisión, del documento y del aviso
+
 ## Tecnologías
-Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions)
+Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument
 
 ## Cómo ejecutar
 1. Clonar el repositorio y abrirlo en Android Studio.
