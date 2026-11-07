@@ -10,6 +10,10 @@ enum class EstadoObra(val valorFirestore: String, val etiqueta: String) {
     RECHAZADA("rechazada", "Rechazada"),                      // HU08
     LISTA_EXHIBICION("lista_exhibicion", "Lista para exhibición"); // HU10
 
+    /** HU08: el Especialista de Arte ya dio su veredicto (la que está lista para exhibición también fue aceptada). */
+    val tieneVeredicto: Boolean
+        get() = this == ACEPTADA || this == RECHAZADA || this == LISTA_EXHIBICION
+
     companion object {
         fun desdeValor(valor: String?): EstadoObra =
             entries.firstOrNull { it.valorFirestore == valor } ?: BORRADOR
