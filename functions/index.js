@@ -567,3 +567,84 @@ async function enviarAviso(uid, datos) {
     }
   }
 }
+
+// =====================================================================================
+// HU08: el Especialista de Arte registra el veredicto de una obra (callable, como decidirSolicitud)
+//   1) Sesión, rol especialista_arte y datos: {obraId, veredicto: "aceptar"|"rechazar", comentario}.
+//   2) En una transacción: que la obra sea suya (expertoUid), que siga "en_evaluacion" y sin veredicto;
+//      guarda el veredicto y baja su carga (lee la carga y guarda max(0, carga - 1): nunca queda negativa).
+//   3) Avisa al socio con FCM (mensaje de datos tipo "veredicto").
+// =====================================================================================
+const COMENTARIO_MAXIMO = 500; // igual que COMENTARIO_MAXIMO en la app
+const VEREDICTOS = {aceptar: "aceptada", rechazar: "rechazada"};
+
+exports.registrarVeredicto = onCall(async (request) => {
+  // 1) Sesión y rol
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Debes iniciar sesión");
+  }
+  const uid = request.auth.uid;
+  const usuario = await db.doc(`usuarios/${uid}`).get();
+  if (!usuario.exists || usuario.get("rol") !== "especialista_arte") {
+    throw new HttpsError("permission-denied", "Solo el Especialista de Arte puede registrar veredictos");
+  }
+
+  // Datos que manda la app
+  const datos = request.data || {};
+  const obraId = typeof datos.obraId === "string" ? datos.obraId : "";
+  const estadoNuevo = VEREDICTOS[datos.veredicto];
+  const comentario = typeof datos.comentario === "string" ? datos.comentario.trim() : "";
+  if (obraId === "") {
+    throw new HttpsError("invalid-argument", "Falta el id de la obra");
+  }
+  if (!estadoNuevo) {
+    throw new HttpsError("invalid-argument", "Veredicto no válido");
+  }
+  if (comentario.length > COMENTARIO_MAXIMO || (estadoNuevo === "rechazada" && comentario.length < 1)) {
+    throw new HttpsError("invalid-argument", "Al rechazar, el comentario es obligatorio (1 a 500 caracteres)");
+  }
+
+  // 2) Todo junto o nada: la obra y la carga del Especialista
+  const refObra = db.doc(`obras/${obraId}`);
+  const refExperto = db.doc(`expertos/${uid}`);
+  const resultado = await db.runTransaction(async (tx) => {
+    // En una transacción, todas las lecturas van antes de las escrituras
+    const obra = await tx.get(refObra);
+    const experto = await tx.get(refExperto);
+    if (!obra.exists) {
+      throw new HttpsError("not-found", "La obra no existe");
+    }
+    if (obra.get("expertoUid") !== uid) {
+      throw noCumple("Esta obra no está asignada a ti", "no_asignada");
+    }
+    if (obra.get("estado") !== "en_evaluacion" || obra.get("evaluadaPor")) {
+      throw noCumple("La obra ya tiene veredicto", "ya_evaluada");
+    }
+    tx.update(refObra, {
+      estado: estadoNuevo,
+      veredictoComentario: comentario === "" ? null : comentario,
+      fechaVeredicto: FieldValue.serverTimestamp(),
+      evaluadaPor: uid,
+    });
+    if (experto.exists) {
+      const carga = Number(experto.get("carga")) || 0;
+      tx.update(refExperto, {carga: Math.max(0, carga - 1)});
+    }
+    return {
+      uidSocio: obra.get("uid"),
+      solicitudId: obra.get("solicitudId") || "",
+      titulo: obra.get("titulo") || "",
+    };
+  });
+
+  // 3) Aviso al socio. Si falla, el veredicto ya quedó guardado
+  await enviarAviso(resultado.uidSocio, {
+    tipo: "veredicto",
+    obraId,
+    solicitudId: resultado.solicitudId,
+    estado: estadoNuevo,
+    titulo: resultado.titulo,
+  });
+  logger.info("Veredicto registrado", {obraId, estado: estadoNuevo, por: uid});
+  return {estado: estadoNuevo};
+});
