@@ -71,8 +71,11 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.firebase.functions)
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.messaging) // HU07: notificaciones al socio
     implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp.logging)

@@ -40,8 +40,37 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - Ingreso automático con huella si hay sesión abierta (también sin internet)
 - Al cerrar sesión se borra la ficha del celular
 
+## Sprint 3 — Registro de obras y asignación de expertos
+
+### HU06: Registro de obras con evidencia fotográfica
+- Registro de una o varias obras (título, técnica, alto, ancho y profundidad opcional) con validación de campos obligatorios
+- Foto obligatoria tomada con la cámara del sistema o elegida de la galería, reducida a 1600 px y girada según el EXIF
+- Nota de voz opcional transcrita a texto con SpeechRecognizer; el texto se corrige o se escribe a mano
+- Borrador de la solicitud de exhibición guardado en SQLite con Room (migración a la versión 2): funciona sin internet
+- Al enviar la solicitud, WorkManager sube las fotos a Firebase Storage y la solicitud con sus obras a Firestore en un batch, apenas hay conexión
+- Reglas de Firestore y de Storage: solo el Socio Activo crea sus solicitudes y sube sus fotos
+- Pruebas unitarias del formulario y del envío
+
+### HU07 (Parte 1): Recomendación de Experto con IA
+- Pestaña Solicitudes del Anfitrión en tiempo real (por revisar y resueltas), con el detalle de cada solicitud
+- Función HTTP `analizarSolicitud` llamada desde la app con Retrofit y corrutinas; verifica la sesión y el rol Anfitrión
+- IA generativa: Gemini Flash (`gemini-3.6-flash`) describe cada obra a partir de su foto y sus datos
+- Recomendación basada en contenido: embeddings `gemini-embedding-2` (768 dimensiones) y similitud coseno; solo compiten los Expertos que dominan la técnica y están disponibles; a igual afinidad, el de menor carga
+- El Anfitrión puede cambiar el Experto recomendado por otro disponible
+- La API key de Gemini es un secreto de Cloud Functions: nunca está en la app ni en el repositorio
+- Pruebas unitarias de las reglas de disponibilidad y selección de Expertos
+
+### HU07 (Parte 2): Aprobación o rechazo con documento por duplicado
+- El Anfitrión aprueba la solicitud solo si todas las obras tienen Experto; puede rechazarla siempre, con motivo obligatorio (hasta 500 caracteres)
+- Documento por duplicado generado en el celular con PdfDocument (copia del archivo de la galería y copia del artista), guardado en Firebase Storage
+- Cloud Function `decidirSolicitud`: revisa que existan los 2 PDF, vuelve a validar cada Experto y, en una transacción, cambia la solicitud y sus obras y suma la carga de cada Experto
+- Notificación al socio con Firebase Cloud Messaging; al tocarla se abre Mis obras
+- Sincronización Firestore → Room con WorkManager: Mis obras muestra Aprobada o Rechazada (con el motivo) y la copia del artista; si el socio cambió de celular, recupera su solicitud
+- Reglas de Storage: el socio solo descarga su copia y solo cuando la solicitud ya está resuelta
+- Pruebas unitarias de la decisión, del documento y del aviso
+
 ## Tecnologías
-Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt
+Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument
 
 ## Cómo ejecutar
 1. Clonar el repositorio y abrirlo en Android Studio.
@@ -51,7 +80,8 @@ Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Fi
 ## Cloud Functions y reglas
 1. Instalar Node.js y `npm install -g firebase-tools`; luego `firebase login`.
 2. `cd functions` y `npm install`.
-3. Desde la raíz: `firebase deploy --only "functions,firestore:rules"` (requiere el plan Blaze).
+3. Guardar la API key de Gemini como secreto: `firebase functions:secrets:set GEMINI_API_KEY`. La key debe estar restringida a la API de Gemini y vinculada a una cuenta de servicio, y el proyecto necesita crédito prepago en Google AI Studio.
+4. Desde la raíz: `firebase deploy --only "functions,firestore:rules,storage"` (requiere el plan Blaze).
 
 ## Equipo
 - Jefferson Rojas (jeffersonr-arch)

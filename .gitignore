@@ -14,3 +14,5 @@
 .cxx
 local.properties
 .idea/
+# HU07: clave de cuenta de servicio (nunca se sube; se guarda en C:\Users\Diego\claves\)
+*firebase-adminsdk*.json

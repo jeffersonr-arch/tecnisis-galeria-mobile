@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HU06: carpeta que FileProvider comparte con la app de cámara. HU07: y la de los PDF con la app de PDF -->
+<paths>
+    <cache-path name="camara" path="camara/" />
+    <cache-path name="documentos" path="documentos/" />
+</paths>

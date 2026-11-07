@@ -1,48 +1,87 @@
 package com.tecnisis.galeria.di
 
-import com.tecnisis.galeria.data.work.VerificacionSchedulerImpl
-import com.tecnisis.galeria.BuildConfig
-import com.tecnisis.galeria.data.remote.RetrofitDni
-import com.tecnisis.galeria.data.repository.ConsultaDniMock
-import com.tecnisis.galeria.data.repository.ConsultaDniRepositoryImpl
-import com.tecnisis.galeria.domain.repository.ConsultaDniRepository
-import com.tecnisis.galeria.domain.usecase.VerificarPostulacionUseCase
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.storage.FirebaseStorage
+import com.tecnisis.galeria.BuildConfig
+import com.tecnisis.galeria.data.local.FotoRepositoryImpl
+import com.tecnisis.galeria.data.local.GaleriaDatabase
+import com.tecnisis.galeria.data.local.PreferenciasRepositoryImpl
+import com.tecnisis.galeria.data.remote.ConectividadRepositoryImpl
+import com.tecnisis.galeria.data.remote.RetrofitDni
+import com.tecnisis.galeria.data.remote.RetrofitAnalisis
+import com.tecnisis.galeria.data.repository.RevisionRepositoryImpl
+import com.tecnisis.galeria.domain.repository.RevisionRepository
+import com.tecnisis.galeria.domain.usecase.AnalizarSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.DescargarFotoObraUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarExpertosUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarSolicitudEnRevisionUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarSolicitudesUseCase
 import com.tecnisis.galeria.data.repository.AuthRepositoryImpl
+import com.tecnisis.galeria.data.repository.ConsultaDniMock
+import com.tecnisis.galeria.data.repository.ConsultaDniRepositoryImpl
+import com.tecnisis.galeria.data.repository.EnvioRepositoryImpl
+import com.tecnisis.galeria.data.repository.ObraRepositoryImpl
 import com.tecnisis.galeria.data.repository.PostulacionRepositoryImpl
+import com.tecnisis.galeria.data.repository.SocioRepositoryImpl
+import com.tecnisis.galeria.data.work.EnvioSolicitudSchedulerImpl
+import com.tecnisis.galeria.data.work.VerificacionSchedulerImpl
 import com.tecnisis.galeria.domain.repository.AuthRepository
+import com.tecnisis.galeria.domain.repository.ConectividadRepository
+import com.tecnisis.galeria.domain.repository.ConsultaDniRepository
+import com.tecnisis.galeria.domain.repository.EnvioRepository
+import com.tecnisis.galeria.domain.repository.EnvioSolicitudScheduler
+import com.tecnisis.galeria.domain.repository.FotoRepository
+import com.tecnisis.galeria.domain.repository.ObraRepository
 import com.tecnisis.galeria.domain.repository.PostulacionRepository
+import com.tecnisis.galeria.domain.repository.PreferenciasRepository
+import com.tecnisis.galeria.domain.repository.SocioRepository
 import com.tecnisis.galeria.domain.repository.VerificacionScheduler
 import com.tecnisis.galeria.domain.usecase.CerrarSesionUseCase
+import com.tecnisis.galeria.domain.usecase.CrearDestinoCamaraUseCase
+import com.tecnisis.galeria.domain.usecase.DescartarFotoUseCase
+import com.tecnisis.galeria.domain.usecase.EliminarObraUseCase
 import com.tecnisis.galeria.domain.usecase.EnviarPostulacionUseCase
+import com.tecnisis.galeria.domain.usecase.EnviarSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.GuardarModoTemaUseCase
+import com.tecnisis.galeria.domain.usecase.GuardarObraUseCase
 import com.tecnisis.galeria.domain.usecase.HaySesionActivaUseCase
 import com.tecnisis.galeria.domain.usecase.IniciarSesionUseCase
-import com.tecnisis.galeria.domain.usecase.ObservarMiPostulacionUseCase
-import com.tecnisis.galeria.domain.usecase.ObservarPostulacionesPorEstadoUseCase
-import com.tecnisis.galeria.domain.usecase.ObtenerPostulacionUseCase
-import com.tecnisis.galeria.domain.usecase.ObtenerUsuarioActualUseCase
-import com.tecnisis.galeria.domain.usecase.RegistrarCuentaUseCase
-import com.tecnisis.galeria.domain.usecase.ResolverPostulacionUseCase
-import com.tecnisis.galeria.data.local.PreferenciasRepositoryImpl
-import com.tecnisis.galeria.domain.repository.PreferenciasRepository
-import com.tecnisis.galeria.domain.usecase.GuardarModoTemaUseCase
-import com.tecnisis.galeria.domain.usecase.ObservarModoTemaUseCase
-import com.tecnisis.galeria.domain.usecase.ObservarUsuarioActualUseCase
-import com.tecnisis.galeria.data.local.GaleriaDatabase
-import com.tecnisis.galeria.data.remote.ConectividadRepositoryImpl
-import com.tecnisis.galeria.data.repository.SocioRepositoryImpl
-import com.tecnisis.galeria.domain.repository.ConectividadRepository
-import com.tecnisis.galeria.domain.repository.SocioRepository
 import com.tecnisis.galeria.domain.usecase.ObservarConexionUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarMiPerfilUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarMiPostulacionUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarMiSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarModoTemaUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarPostulacionesPorEstadoUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarUsuarioActualUseCase
+import com.tecnisis.galeria.domain.usecase.ObtenerObraUseCase
+import com.tecnisis.galeria.domain.usecase.ObtenerPostulacionUseCase
+import com.tecnisis.galeria.domain.usecase.ObtenerUsuarioActualUseCase
+import com.tecnisis.galeria.domain.usecase.PrepararFotoUseCase
 import com.tecnisis.galeria.domain.usecase.ProgramarSincronizacionUseCase
+import com.tecnisis.galeria.domain.usecase.RegistrarCuentaUseCase
+import com.tecnisis.galeria.domain.usecase.ResolverPostulacionUseCase
 import com.tecnisis.galeria.domain.usecase.SincronizarPerfilUseCase
+import com.tecnisis.galeria.domain.usecase.SubirSolicitudesUseCase
+import com.tecnisis.galeria.domain.usecase.VerificarPostulacionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.tecnisis.galeria.data.pdf.GeneradorPdf
+import com.tecnisis.galeria.data.repository.DecisionRepositoryImpl
+import com.tecnisis.galeria.domain.repository.DecisionRepository
+import com.tecnisis.galeria.domain.usecase.AprobarSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoUseCase
+import com.tecnisis.galeria.domain.usecase.RechazarSolicitudUseCase
+import com.tecnisis.galeria.data.repository.SeguimientoRepositoryImpl
+import com.tecnisis.galeria.domain.repository.SeguimientoRepository
+import com.tecnisis.galeria.domain.usecase.ProgramarSeguimientoUseCase
+import com.tecnisis.galeria.domain.usecase.SincronizarSolicitudesUseCase
+import com.tecnisis.galeria.data.repository.AvisosRepositoryImpl
+import com.tecnisis.galeria.domain.repository.AvisosRepository
+import com.tecnisis.galeria.domain.usecase.GuardarTokenUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -71,6 +110,30 @@ interface AppContainer {
     val sincronizarPerfil: SincronizarPerfilUseCase
     val programarSincronizacion: ProgramarSincronizacionUseCase
     val observarConexion: ObservarConexionUseCase
+
+    // Sprint 3 · HU06
+    val observarMiSolicitud: ObservarMiSolicitudUseCase
+    val obtenerObra: ObtenerObraUseCase
+    val guardarObra: GuardarObraUseCase
+    val eliminarObra: EliminarObraUseCase
+    val enviarSolicitud: EnviarSolicitudUseCase
+    val subirSolicitudes: SubirSolicitudesUseCase
+    val crearDestinoCamara: CrearDestinoCamaraUseCase
+    val prepararFoto: PrepararFotoUseCase
+    val descartarFoto: DescartarFotoUseCase
+    // Sprint 3 · HU07
+    val observarSolicitudes: ObservarSolicitudesUseCase
+    val observarSolicitudEnRevision: ObservarSolicitudEnRevisionUseCase
+    val observarExpertos: ObservarExpertosUseCase
+    val analizarSolicitud: AnalizarSolicitudUseCase
+    val descargarFotoObra: DescargarFotoObraUseCase
+    // Sprint 3 · HU07 · Parte 2
+    val aprobarSolicitud: AprobarSolicitudUseCase
+    val rechazarSolicitud: RechazarSolicitudUseCase
+    val descargarDocumento: DescargarDocumentoUseCase
+    val sincronizarSolicitudes: SincronizarSolicitudesUseCase
+    val programarSeguimiento: ProgramarSeguimientoUseCase
+    val guardarToken: GuardarTokenUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -94,7 +157,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val iniciarSesion by lazy { IniciarSesionUseCase(authRepository) }
     override val obtenerUsuarioActual by lazy { ObtenerUsuarioActualUseCase(authRepository) }
     override val haySesionActiva by lazy { HaySesionActivaUseCase(authRepository) }
-    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository, socioRepository) } // HU05
+    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository, socioRepository, avisosRepository) } // HU05 + HU07
 
     override val registrarCuenta by lazy { RegistrarCuentaUseCase(authRepository) }
     override val enviarPostulacion by lazy {
@@ -128,6 +191,58 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
 
     override val observarMiPerfil by lazy { ObservarMiPerfilUseCase(socioRepository) }
     override val sincronizarPerfil by lazy { SincronizarPerfilUseCase(socioRepository) }
-    override val programarSincronizacion by lazy { ProgramarSincronizacionUseCase(socioRepository) }
+    override val programarSincronizacion by lazy {
+        // HU06: también reintenta los envíos. HU07: baja las decisiones y registra el token de avisos
+        ProgramarSincronizacionUseCase(socioRepository, envioScheduler, seguimientoRepository, avisosRepository)
+    }
     override val observarConexion by lazy { ObservarConexionUseCase(conectividadRepository) }
+
+    // HU06: obras (Room) + fotos (archivos) + envío (Storage, Firestore y WorkManager)
+    private val storage by lazy {
+        // Sin internet, Storage reintenta hasta 10 minutos por defecto; 2 minutos basta dentro del worker
+        FirebaseStorage.getInstance().apply {
+            maxUploadRetryTimeMillis = 120_000
+            maxDownloadRetryTimeMillis = 30_000 // HU07: las fotos que mira el Anfitrión
+        }
+    }
+    private val fotoRepository: FotoRepository by lazy { FotoRepositoryImpl(contexto) }
+    private val obraRepository: ObraRepository by lazy { ObraRepositoryImpl(auth, baseDeDatos, fotoRepository) }
+    private val envioRepository: EnvioRepository by lazy { EnvioRepositoryImpl(auth, db, storage, baseDeDatos) }
+    private val envioScheduler: EnvioSolicitudScheduler by lazy { EnvioSolicitudSchedulerImpl(contexto) }
+
+    override val observarMiSolicitud by lazy { ObservarMiSolicitudUseCase(obraRepository) }
+    override val obtenerObra by lazy { ObtenerObraUseCase(obraRepository) }
+    override val guardarObra by lazy { GuardarObraUseCase(obraRepository) }
+    override val eliminarObra by lazy { EliminarObraUseCase(obraRepository) }
+    override val enviarSolicitud by lazy { EnviarSolicitudUseCase(obraRepository, envioScheduler) }
+    override val subirSolicitudes by lazy { SubirSolicitudesUseCase(envioRepository) }
+    override val crearDestinoCamara by lazy { CrearDestinoCamaraUseCase(fotoRepository) }
+    override val prepararFoto by lazy { PrepararFotoUseCase(fotoRepository) }
+    override val descartarFoto by lazy { DescartarFotoUseCase(fotoRepository) }
+    // HU07: revisión de solicitudes (Firestore + Retrofit hacia la función analizarSolicitud + Storage)
+    private val revisionRepository: RevisionRepository by lazy {
+        RevisionRepositoryImpl(auth, db, storage, RetrofitAnalisis.crearApi())
+    }
+
+    override val observarSolicitudes by lazy { ObservarSolicitudesUseCase(revisionRepository) }
+    override val observarSolicitudEnRevision by lazy { ObservarSolicitudEnRevisionUseCase(revisionRepository) }
+    override val observarExpertos by lazy { ObservarExpertosUseCase(revisionRepository) }
+    override val analizarSolicitud by lazy { AnalizarSolicitudUseCase(revisionRepository) }
+    override val descargarFotoObra by lazy { DescargarFotoObraUseCase(revisionRepository) }
+    // HU07 · Parte 2: decisión del Anfitrión (PDF + Storage + Cloud Function decidirSolicitud)
+    private val decisionRepository: DecisionRepository by lazy {
+        DecisionRepositoryImpl(contexto, auth, db, storage, functions, GeneradorPdf())
+    }
+    override val aprobarSolicitud by lazy { AprobarSolicitudUseCase(decisionRepository) }
+    override val rechazarSolicitud by lazy { RechazarSolicitudUseCase(decisionRepository) }
+    override val descargarDocumento by lazy { DescargarDocumentoUseCase(decisionRepository) }
+    // HU07 · Parte 2: la decisión baja de Firestore a Room (WorkManager)
+    private val seguimientoRepository: SeguimientoRepository by lazy {
+        SeguimientoRepositoryImpl(contexto, auth, db, baseDeDatos)
+    }
+    override val sincronizarSolicitudes by lazy { SincronizarSolicitudesUseCase(seguimientoRepository) }
+    override val programarSeguimiento by lazy { ProgramarSeguimientoUseCase(seguimientoRepository) }
+    // HU07 · Parte 2: token de Firebase Cloud Messaging en tokens/{uid}
+    private val avisosRepository: AvisosRepository by lazy { AvisosRepositoryImpl(auth, db, alcanceApp) }
+    override val guardarToken by lazy { GuardarTokenUseCase(avisosRepository) }
 }

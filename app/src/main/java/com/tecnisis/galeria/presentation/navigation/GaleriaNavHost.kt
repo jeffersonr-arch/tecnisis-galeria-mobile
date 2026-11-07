@@ -26,17 +26,26 @@ import com.tecnisis.galeria.presentation.componentes.BarraInferior
 import com.tecnisis.galeria.presentation.componentes.OpcionBarra
 import com.tecnisis.galeria.presentation.detalle.DetallePostulacionRoute
 import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
+import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudRoute
+import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
+import com.tecnisis.galeria.presentation.obras.MisObrasRoute
+import com.tecnisis.galeria.presentation.obras.RegistrarObraRoute
+import com.tecnisis.galeria.presentation.obras.RegistrarObraViewModel
 import com.tecnisis.galeria.presentation.perfil.PerfilRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
+import com.tecnisis.galeria.presentation.solicitudes.SolicitudesRoute
 
 @Composable
 fun GaleriaNavHost(
     navController: NavHostController = rememberNavController(),
-    sesionViewModel: SesionViewModel = viewModel(factory = SesionViewModel.Factory)
+    sesionViewModel: SesionViewModel = viewModel(factory = SesionViewModel.Factory),
+    abrirMisObras: Boolean = false,          // Se tocó la notificación de la decisión
+    onMisObrasAbierta: () -> Unit = {}       // Avisa a MainActivity que ya se atendió
+
 ) {
     val usuario by sesionViewModel.usuario.collectAsState()
     val entrada by navController.currentBackStackEntryAsState()
@@ -47,7 +56,6 @@ fun GaleriaNavHost(
             popUpTo(navController.graph.id) { inclusive = true }
         }
     }
-    // Solo navega si la pantalla ya existe en el grafo (las de sprints futuros aún no)
     val navegarSiExiste: (Pantalla) -> Unit = { destino ->
         if (navController.graph.findNode(destino.name) != null) {
             navController.navigate(destino.name)
@@ -55,13 +63,11 @@ fun GaleriaNavHost(
     }
     val volver: () -> Unit = { navController.popBackStack() }
 
-    // HU14: pestañas del rol que ya tienen pantalla programada
     val destinos = if (entrada == null) emptyList() else
         usuario?.rol?.destinos().orEmpty()
             .filter { navController.graph.findNode(it.pantalla.name) != null }
     val mostrarBarra = destinos.size >= 2 && destinos.any { it.pantalla.name == rutaActual }
 
-    // HU14: si el rol cambia con la sesión abierta (el Anfitrión aprobó), ir al inicio del rol nuevo
     var rolAnterior by remember { mutableStateOf<Rol?>(null) }
     LaunchedEffect(usuario?.rol) {
         val rolNuevo = usuario?.rol
@@ -71,6 +77,20 @@ fun GaleriaNavHost(
             }
         }
         rolAnterior = rolNuevo
+    }
+
+    LaunchedEffect(abrirMisObras, usuario?.rol, rutaActual) {
+        if (abrirMisObras && usuario?.rol == Rol.SOCIO_ACTIVO &&
+            rutaActual != null && rutaActual != Pantalla.Login.name
+        ) {
+            if (rutaActual != Pantalla.MisObras.name) {
+                navController.navigate(Pantalla.MisObras.name) {
+                    popUpTo(Rol.SOCIO_ACTIVO.pantallaInicio().name)
+                    launchSingleTop = true
+                }
+            }
+            onMisObrasAbierta()
+        }
     }
 
     Scaffold(
@@ -126,7 +146,6 @@ fun GaleriaNavHost(
                 }
             }
 
-            // HU02: al enviar, va directo a ver el estado
             composable(Pantalla.Postulacion.name) {
                 PostulacionRoute(
                     onEnviada = {
@@ -143,6 +162,26 @@ fun GaleriaNavHost(
             composable(Pantalla.Perfil.name) {
                 PerfilRoute(onSesionCerrada = irAlLogin)
             }
+            composable(Pantalla.MisObras.name) {
+                MisObrasRoute(
+                    onRegistrar = { navController.navigate(Pantalla.RegistrarObra.name) },
+                    onEditar = { id ->
+                        navController.navigate("${Pantalla.RegistrarObra.name}?${RegistrarObraViewModel.ARG_OBRA_ID}=$id")
+                    }
+                )
+            }
+            composable(
+                route = "${Pantalla.RegistrarObra.name}?${RegistrarObraViewModel.ARG_OBRA_ID}={${RegistrarObraViewModel.ARG_OBRA_ID}}",
+                arguments = listOf(
+                    navArgument(RegistrarObraViewModel.ARG_OBRA_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) {
+                RegistrarObraRoute(onVolver = volver)
+            }
             composable(Pantalla.Bandeja.name) {
                 BandejaRoute(
                     onAbrir = { uid -> navController.navigate("${Pantalla.DetallePostulacion.name}/$uid") }
@@ -155,6 +194,19 @@ fun GaleriaNavHost(
                 )
             ) {
                 DetallePostulacionRoute(onVolver = volver)
+            }
+            composable(Pantalla.SolicitudesObras.name) {
+                SolicitudesRoute(
+                    onAbrir = { id -> navController.navigate("${Pantalla.DetalleSolicitud.name}/$id") }
+                )
+            }
+            composable(
+                route = "${Pantalla.DetalleSolicitud.name}/{${DetalleSolicitudViewModel.ARG_ID}}",
+                arguments = listOf(
+                    navArgument(DetalleSolicitudViewModel.ARG_ID) { type = NavType.StringType }
+                )
+            ) {
+                DetalleSolicitudRoute(onVolver = volver)
             }
         }
     }

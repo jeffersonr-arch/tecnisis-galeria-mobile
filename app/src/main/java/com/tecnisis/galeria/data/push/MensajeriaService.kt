@@ -1,0 +1,76 @@
+package com.tecnisis.galeria.data.push
+
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import com.tecnisis.galeria.GaleriaApplication
+import com.tecnisis.galeria.MainActivity
+import com.tecnisis.galeria.R
+import com.tecnisis.galeria.domain.model.EXTRA_ABRIR_MIS_OBRAS
+import com.tecnisis.galeria.domain.model.avisoDecision
+
+/**
+ * HU07: recibe los mensajes de Firebase Cloud Messaging. La Cloud Function manda un mensaje de "datos"
+ * (no de notificación): así este código corre siempre, con la app abierta o cerrada.
+ */
+class MensajeriaService : FirebaseMessagingService() {
+
+    override fun onNewToken(token: String) {
+        (application as GaleriaApplication).container.guardarToken(token)
+    }
+
+    override fun onMessageReceived(mensaje: RemoteMessage) {
+        val datos = mensaje.data
+        if (datos["tipo"] != "decision") return
+        // 1) Baja la decisión a Room con WorkManager, aunque el socio haya negado las notificaciones
+        (application as GaleriaApplication).container.programarSeguimiento()
+        // 2) Muestra el aviso (si el socio dio el permiso)
+        mostrarAviso(aprobada = datos["estado"] == "aprobada", cantidad = datos["cantidad"]?.toIntOrNull() ?: 0)
+    }
+
+    private fun mostrarAviso(aprobada: Boolean, cantidad: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val canal = NotificationChannel(CANAL, "Solicitudes de exhibición", NotificationManager.IMPORTANCE_HIGH)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(canal)
+        }
+        // Desde Android 13 hace falta el permiso; si el socio lo negó, no se muestra (la decisión igual llega a Room)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return
+
+        // Al tocarla se abre la app en Mis obras
+        val abrir = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_ABRIR_MIS_OBRAS, true)
+        }
+        val alTocar = PendingIntent.getActivity(
+            this, 0, abrir, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val aviso = avisoDecision(aprobada, cantidad)
+        val notificacion = NotificationCompat.Builder(this, CANAL)
+            .setSmallIcon(R.drawable.logo_tecnisis)
+            .setContentTitle(aviso.titulo)
+            .setContentText(aviso.texto)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(aviso.texto))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(alTocar)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(this).notify(ID_DECISION, notificacion)
+    }
+
+    private companion object {
+        const val CANAL = "solicitudes"
+        const val ID_DECISION = 2001
+    }
+}

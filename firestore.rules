@@ -12,6 +12,18 @@ service cloud.firestore {
       return autenticado() &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'anfitrion';
     }
+    // HU06
+    function esSocioActivo() {
+      return autenticado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'socio_activo';
+    }
+    function tecnicaValida(t) {
+      return t in ['oleo', 'acrilico', 'acuarela', 'tecnica_mixta', 'dibujo',
+                   'grabado', 'escultura', 'fotografia', 'ceramica', 'textil'];
+    }
+    function medidaValida(m) {
+      return m is number && m > 0 && m <= 1000;
+    }
 
     // Sprint 1 + HU02: cada uno lee su documento; al registrarse solo puede ser postulante
     match /usuarios/{uid} {
@@ -50,5 +62,58 @@ service cloud.firestore {
     match /contadores/{id} {
       allow read, write: if false;
     }
+
+    // HU06: el worker crea la solicitud enviada junto con sus obras (un batch).
+    // resource == null deja preguntar si existe una que todavía no se creó (reintentos del worker).
+    // La HU07 la cambiará con una Cloud Function, por eso update y delete están cerrados.
+    match /solicitudes/{id} {
+      allow read: if autenticado()
+        && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion());
+      allow create: if esSocioActivo()
+        && request.resource.data.id == id
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'enviada'
+        && request.resource.data.cantidadObras is int
+        && request.resource.data.cantidadObras >= 1
+        && request.resource.data.cantidadObras <= 10;
+      allow update, delete: if false;
+    }
+    match /obras/{id} {
+      allow read: if autenticado()
+        && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion());
+      allow create: if esSocioActivo()
+        && request.resource.data.id == id
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'enviada'
+        && request.resource.data.titulo is string
+        && request.resource.data.titulo.size() >= 1
+        && request.resource.data.titulo.size() <= 80
+        && tecnicaValida(request.resource.data.tecnica)
+        && medidaValida(request.resource.data.altoCm)
+        && medidaValida(request.resource.data.anchoCm)
+        && (request.resource.data.profundidadCm == null || medidaValida(request.resource.data.profundidadCm))
+        && request.resource.data.fotoUrl is string
+        && getAfter(/databases/$(database)/documents/solicitudes/$(request.resource.data.solicitudId)).data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+        // HU07: Expertos (Especialistas de Arte). Los crea el script sembrarExpertos; la carga la cambia
+        // la Cloud Function al aprobar (Parte 2). El Anfitrión los lee para elegir; cada Experto, el suyo.
+        match /expertos/{uid} {
+          allow read: if esAnfitrion() || esDueno(uid);
+          allow write: if false;
+        }
+        // HU07: embeddings de Expertos y obras. Solo los usa la función analizarSolicitud (admin).
+        match /expertos_ia/{id} {
+          allow read, write: if false;
+        }
+        match /obras_ia/{id} {
+          allow read, write: if false;
+        }
+        // HU07 · Parte 2: token de notificaciones (FCM) de cada usuario. Solo el dueño lo escribe;
+        // la Cloud Function decidirSolicitud lo lee con permisos de administrador.
+        match /tokens/{uid} {
+          allow read, write: if esDueno(uid);
+        }
+
   }
 }
