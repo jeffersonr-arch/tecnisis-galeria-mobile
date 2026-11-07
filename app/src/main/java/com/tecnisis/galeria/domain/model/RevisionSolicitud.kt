@@ -32,7 +32,8 @@ data class ObraEnRevision(
     val descripcionIa: String?,                // null hasta que Gemini la describe
     val candidatos: List<CandidatoExperto>,    // de mayor a menor afinidad
     val recomendadoUid: String?,               // null = ningún Experto disponible
-    val expertoAsignadoUid: String? = null     // Parte 2: el que quedó al aprobar (puede no ser el recomendado)
+    val expertoAsignadoUid: String? = null,    // Parte 2: el que quedó al aprobar (puede no ser el recomendado)
+    val estado: EstadoObra = EstadoObra.ENVIADA // HU08: en evaluación, aceptada o rechazada (el Anfitrión ve el veredicto)
 )
 
 data class SolicitudEnRevision(
