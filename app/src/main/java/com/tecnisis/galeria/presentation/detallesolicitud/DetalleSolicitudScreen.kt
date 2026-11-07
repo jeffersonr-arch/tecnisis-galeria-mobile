@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
@@ -45,14 +46,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tecnisis.galeria.domain.model.CARGA_MAXIMA
 import com.tecnisis.galeria.domain.model.CandidatoExperto
+import com.tecnisis.galeria.domain.model.CopiaDocumento
 import com.tecnisis.galeria.domain.model.EstadoAnalisis
 import com.tecnisis.galeria.domain.model.EstadoEspecialista
 import com.tecnisis.galeria.domain.model.EstadoSolicitud
+import com.tecnisis.galeria.domain.model.MOTIVO_MAXIMO
 import com.tecnisis.galeria.domain.model.PerfilEspecialista
 import com.tecnisis.galeria.domain.model.ObraEnRevision
 import com.tecnisis.galeria.domain.model.SolicitudEnRevision
 import com.tecnisis.galeria.domain.model.Tecnica
 import com.tecnisis.galeria.domain.model.seleccionInicial
+import com.tecnisis.galeria.presentation.componentes.abrirPdf
 import com.tecnisis.galeria.presentation.componentes.Aviso
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
 import com.tecnisis.galeria.presentation.componentes.ChipColor
@@ -83,9 +87,15 @@ fun DetalleSolicitudRoute(
         viewModel.onAvisoMostrado()
     }
 
+    val contexto = LocalContext.current
+    LaunchedEffect(uiState.pdfParaAbrir) {
+        val ruta = uiState.pdfParaAbrir ?: return@LaunchedEffect
+        viewModel.onPdfAbierto(abrirPdf(contexto, ruta))
+    }
+
     val pedirVolver = { if (viewModel.onVolverPedido()) onVolver() }
-    // Botón Atrás del celular: solo se intercepta si hay cambios de Experto sin aprobar
-    BackHandler(enabled = uiState.hayCambios) { pedirVolver() }
+    // Botón Atrás: se intercepta si hay cambios de Experto sin aprobar o si se está guardando la decisión
+    BackHandler(enabled = uiState.hayCambios || uiState.decidiendo) { pedirVolver() }
 
     DetalleSolicitudScreen(
         uiState = uiState,
@@ -93,8 +103,31 @@ fun DetalleSolicitudRoute(
         onVolver = pedirVolver,
         onReintentar = viewModel::analizar,
         onCambiar = viewModel::onCambiar,
-        descargarFoto = viewModel::descargarFoto
+        descargarFoto = viewModel::descargarFoto,
+        onAprobar = viewModel::onAprobar,
+        onRechazar = viewModel::onRechazar,
+        onAbrirDocumento = viewModel::onAbrirDocumento
     )
+
+    when (uiState.dialogo) {
+        DialogoDecision.APROBAR -> DialogoAprobar(
+            nombreSocio = uiState.solicitud?.nombreSocio.orEmpty(),
+            filas = uiState.filasAprobacion,
+            onAprobar = viewModel::onConfirmarAprobar,
+            onCancelar = viewModel::onCerrarDialogo
+        )
+        DialogoDecision.RECHAZAR -> DialogoRechazar(
+            cantidadObras = uiState.obras.size,
+            motivo = uiState.motivo,
+            maximo = MOTIVO_MAXIMO,
+            mostrarError = uiState.mostrarErrorMotivo,
+            sugerencia = uiState.sugerenciaMotivo,
+            onMotivo = viewModel::onMotivo,
+            onRechazar = viewModel::onConfirmarRechazo,
+            onCancelar = viewModel::onCerrarDialogo
+        )
+        null -> Unit
+    }
 
     uiState.obraEnHoja?.let { obra ->
         HojaCambiarExperto(
@@ -123,12 +156,26 @@ fun DetalleSolicitudScreen(
     onVolver: () -> Unit,
     onReintentar: () -> Unit,
     onCambiar: (String) -> Unit,
-    descargarFoto: suspend (String) -> ByteArray?
+    descargarFoto: suspend (String) -> ByteArray?,
+    onAprobar: () -> Unit = {},
+    onRechazar: () -> Unit = {},
+    onAbrirDocumento: (CopiaDocumento) -> Unit = {}
 ) {
     val c = MaterialTheme.colorScheme
     Scaffold(
         containerColor = c.background,
         topBar = { BarraConVolver("Solicitud de exhibición", onVolver) },
+        bottomBar = {
+            if (uiState.enRevision) {
+                BarraDecision(
+                    puedeAprobar = uiState.puedeAprobar,
+                    ayuda = uiState.ayudaDecision,
+                    ocupado = uiState.decidiendo,
+                    onRechazar = onRechazar,
+                    onAprobar = onAprobar
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         val solicitud = uiState.solicitud
@@ -155,7 +202,7 @@ fun DetalleSolicitudScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item { TarjetaSocio(solicitud) }
-                item { EstadoDelAnalisis(uiState, onReintentar) }
+                item { EstadoDelAnalisis(uiState, onReintentar, onAbrirDocumento) }
                 item { TituloSeccion("Obras · ${solicitud.obras.size}", Modifier.padding(top = 4.dp)) }
                 items(solicitud.obras, key = { it.id }) { obra ->
                     TarjetaObra(obra, uiState, descargarFoto, onCambiar = { onCambiar(obra.id) })
@@ -200,12 +247,27 @@ private fun TarjetaSocio(s: SolicitudEnRevision) {
     }
 }
 
-/** La franja bajo el socio: analizando, error con Reintentar, o el avance de obras con Experto. */
+/**
+ * La franja bajo el socio: analizando, error con Reintentar, el avance de obras con Experto
+ * o, si ya se resolvió (Parte 2), la decisión con sus 2 documentos.
+ */
 @Composable
-private fun EstadoDelAnalisis(uiState: DetalleSolicitudUiState, onReintentar: () -> Unit) {
+private fun EstadoDelAnalisis(
+    uiState: DetalleSolicitudUiState,
+    onReintentar: () -> Unit,
+    onAbrirDocumento: (CopiaDocumento) -> Unit
+) {
     val c = MaterialTheme.colorScheme
     when {
-        !uiState.enRevision -> Unit   // aprobada o rechazada: la Parte 2 agrega los documentos
+        !uiState.enRevision -> TarjetaResolucion(
+            aprobada = uiState.aprobada,
+            fecha = uiState.solicitud?.fechaResolucion?.let { formatoFecha.format(Date(it)) },
+            motivo = uiState.solicitud?.motivoRechazo,
+            abriendoArchivo = uiState.abriendo == CopiaDocumento.ARCHIVO,
+            abriendoArtista = uiState.abriendo == CopiaDocumento.ARTISTA,
+            onAbrirArchivo = { onAbrirDocumento(CopiaDocumento.ARCHIVO) },
+            onAbrirArtista = { onAbrirDocumento(CopiaDocumento.ARTISTA) }
+        )
         uiState.analizando -> Aviso(
             "Analizando las obras con IA",
             "Se describe cada obra y se busca el Experto más afín. Puede tardar hasta un minuto.",
@@ -306,6 +368,19 @@ private fun TarjetaObra(
 @Composable
 private fun BloqueExperto(obra: ObraEnRevision, uiState: DetalleSolicitudUiState, onCambiar: () -> Unit) {
     val c = MaterialTheme.colorScheme
+    if (!uiState.enRevision) {
+        val asignado = uiState.expertoAsignado(obra) ?: return
+        FilaExperto(
+            rotulo = "Experto asignado",
+            nombre = asignado.nombre,
+            tecnicas = asignado.tecnicas.joinToString(" · ") { it.etiqueta },
+            afinidad = obra.candidatos.firstOrNull { it.uid == asignado.uid }?.afinidad ?: 0,
+            carga = asignado.carga,
+            cargaMaxima = CARGA_MAXIMA,
+            onCambiar = null
+        )
+        return
+    }
     if (!uiState.analisisListo) {
         Text(
             if (uiState.analizando) "Buscando el Experto más afín…" else "Experto: pendiente de análisis",
@@ -326,17 +401,16 @@ private fun BloqueExperto(obra: ObraEnRevision, uiState: DetalleSolicitudUiState
     val afinidad = obra.candidatos.firstOrNull { it.uid == experto.uid }?.afinidad ?: 0
     val cambiado = uiState.seleccion[obra.id] != obra.recomendadoUid
     FilaExperto(
-        rotulo = if (!uiState.enRevision) "Experto asignado" else if (cambiado) "Experto elegido por ti" else "Experto recomendado",
+        rotulo = if (cambiado) "Experto elegido por ti" else "Experto recomendado",
         nombre = experto.nombre,
         tecnicas = experto.tecnicas.joinToString(" · ") { it.etiqueta },
         afinidad = afinidad,
         carga = experto.carga,
         cargaMaxima = CARGA_MAXIMA,
-        onCambiar = if (uiState.enRevision) onCambiar else null
+        onCambiar = onCambiar
     )
 }
 
-/** 60.0 → "60"; 22.5 → "22,5". */
 private fun cm(valor: Double): String =
     if (valor % 1.0 == 0.0) valor.toInt().toString() else valor.toString().replace('.', ',')
 
@@ -350,24 +424,27 @@ private val expertosEjemplo = listOf(
     PerfilEspecialista("j", "Jorge Huamán Ccori", setOf(Tecnica.TEXTIL, Tecnica.CERAMICA), EstadoEspecialista.ACTIVO, 1)
 )
 
-private fun estadoEjemplo(analisis: EstadoAnalisis, sinExpertoTextil: Boolean = false): DetalleSolicitudUiState {
+private fun estadoEjemplo(analisis: EstadoAnalisis, sinExpertoTextil: Boolean = false, estado: EstadoSolicitud = EstadoSolicitud.ENVIADA): DetalleSolicitudUiState {
+    val aprobada = estado == EstadoSolicitud.APROBADA
     val obras = listOf(
         ObraEnRevision(
             "1", "Mañana en Paracas", Tecnica.OLEO, 60.0, 80.0, null,
             "Pinté la bahía al amanecer, cuando los botes todavía no salen.", "",
             if (analisis == EstadoAnalisis.LISTO) "Paisaje marino al óleo: una bahía en calma con luz de amanecer, en azules intensos y ocres cálidos." else null,
-            listOf(CandidatoExperto("c", 87)), "c"
+            listOf(CandidatoExperto("c", 87)), "c", expertoAsignadoUid = if (aprobada) "c" else null
         ),
         ObraEnRevision(
             "2", "Telar de Ocongate", Tecnica.TEXTIL, 120.0, 90.0, null, "", "",
             if (analisis == EstadoAnalisis.LISTO) "Tejido de lana con rombos geométricos en rojo, verde y amarillo sobre fondo oscuro." else null,
-            listOf(CandidatoExperto("j", 91)), if (sinExpertoTextil) null else "j"
+            listOf(CandidatoExperto("j", 91)), if (sinExpertoTextil) null else "j", expertoAsignadoUid = if (aprobada) "j" else null
         )
     )
     val solicitud = SolicitudEnRevision(
-        "s", "u", "Rosa Quispe Mamani", "SOC-0001", EstadoSolicitud.ENVIADA, analisis,
+        "s", "u", "Rosa Quispe Mamani", "SOC-0001", estado, analisis,
         analisisDesde = if (analisis == EstadoAnalisis.EN_CURSO) System.currentTimeMillis() else null,
-        fechaEnvio = 1_794_500_000_000, obras = obras
+        fechaEnvio = 1_794_500_000_000, obras = obras,
+        motivoRechazo = if (estado == EstadoSolicitud.RECHAZADA) "No hay Experto disponible para Textil" else null,
+        fechaResolucion = if (estado == EstadoSolicitud.ENVIADA) null else 1_794_560_000_000
     )
     val expertos = if (sinExpertoTextil) expertosEjemplo.take(1) else expertosEjemplo
     return DetalleSolicitudUiState(cargando = false, solicitud = solicitud, expertos = expertos, seleccion = seleccionInicial(obras))
@@ -403,5 +480,28 @@ private fun DetalleSinExpertoPreview() {
 private fun DetalleErrorPreview() {
     TecnisisGaleriaTheme {
         DetalleSolicitudScreen(estadoEjemplo(EstadoAnalisis.ERROR), remember { SnackbarHostState() }, {}, {}, {}, { null })
+    }
+}
+
+@Preview(name = "Aprobada · claro", showBackground = true, heightDp = 1400)
+@Preview(name = "Aprobada · nocturno", showBackground = true, heightDp = 1400, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DetalleAprobadaPreview() {
+    TecnisisGaleriaTheme {
+        DetalleSolicitudScreen(
+            estadoEjemplo(EstadoAnalisis.LISTO, estado = EstadoSolicitud.APROBADA),
+            remember { SnackbarHostState() }, {}, {}, {}, { null }
+        )
+    }
+}
+
+@Preview(name = "Rechazada", showBackground = true, heightDp = 1400)
+@Composable
+private fun DetalleRechazadaPreview() {
+    TecnisisGaleriaTheme {
+        DetalleSolicitudScreen(
+            estadoEjemplo(EstadoAnalisis.LISTO, sinExpertoTextil = true, estado = EstadoSolicitud.RECHAZADA),
+            remember { SnackbarHostState() }, {}, {}, {}, { null }
+        )
     }
 }

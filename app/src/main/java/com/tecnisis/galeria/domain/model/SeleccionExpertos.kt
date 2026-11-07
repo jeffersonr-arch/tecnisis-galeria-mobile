@@ -8,9 +8,12 @@ data class OpcionExperto(
     val disponible: Boolean
 )
 
-/** Selección inicial: lo que recomendó la función para cada obra (obraId → uid del Experto o null). */
+/**
+ * Selección inicial (obraId → uid del Experto o null): el asignado si la solicitud ya se aprobó;
+ * si no, lo que recomendó la función.
+ */
 fun seleccionInicial(obras: List<ObraEnRevision>): Map<String, String?> =
-    obras.associate { it.id to it.recomendadoUid }
+    obras.associate { it.id to (it.expertoAsignadoUid ?: it.recomendadoUid) }
 
 /** Cuántas OTRAS obras de esta solicitud tienen elegido a cada Experto. */
 fun asignacionesExtra(seleccion: Map<String, String?>, exceptoObra: String): Map<String, Int> =

@@ -69,6 +69,19 @@ import com.tecnisis.galeria.domain.usecase.VerificarPostulacionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.tecnisis.galeria.data.pdf.GeneradorPdf
+import com.tecnisis.galeria.data.repository.DecisionRepositoryImpl
+import com.tecnisis.galeria.domain.repository.DecisionRepository
+import com.tecnisis.galeria.domain.usecase.AprobarSolicitudUseCase
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoUseCase
+import com.tecnisis.galeria.domain.usecase.RechazarSolicitudUseCase
+import com.tecnisis.galeria.data.repository.SeguimientoRepositoryImpl
+import com.tecnisis.galeria.domain.repository.SeguimientoRepository
+import com.tecnisis.galeria.domain.usecase.ProgramarSeguimientoUseCase
+import com.tecnisis.galeria.domain.usecase.SincronizarSolicitudesUseCase
+import com.tecnisis.galeria.data.repository.AvisosRepositoryImpl
+import com.tecnisis.galeria.domain.repository.AvisosRepository
+import com.tecnisis.galeria.domain.usecase.GuardarTokenUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -114,6 +127,13 @@ interface AppContainer {
     val observarExpertos: ObservarExpertosUseCase
     val analizarSolicitud: AnalizarSolicitudUseCase
     val descargarFotoObra: DescargarFotoObraUseCase
+    // Sprint 3 · HU07 · Parte 2
+    val aprobarSolicitud: AprobarSolicitudUseCase
+    val rechazarSolicitud: RechazarSolicitudUseCase
+    val descargarDocumento: DescargarDocumentoUseCase
+    val sincronizarSolicitudes: SincronizarSolicitudesUseCase
+    val programarSeguimiento: ProgramarSeguimientoUseCase
+    val guardarToken: GuardarTokenUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -137,7 +157,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val iniciarSesion by lazy { IniciarSesionUseCase(authRepository) }
     override val obtenerUsuarioActual by lazy { ObtenerUsuarioActualUseCase(authRepository) }
     override val haySesionActiva by lazy { HaySesionActivaUseCase(authRepository) }
-    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository, socioRepository) } // HU05
+    override val cerrarSesion by lazy { CerrarSesionUseCase(authRepository, socioRepository, avisosRepository) } // HU05 + HU07
 
     override val registrarCuenta by lazy { RegistrarCuentaUseCase(authRepository) }
     override val enviarPostulacion by lazy {
@@ -172,7 +192,8 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val observarMiPerfil by lazy { ObservarMiPerfilUseCase(socioRepository) }
     override val sincronizarPerfil by lazy { SincronizarPerfilUseCase(socioRepository) }
     override val programarSincronizacion by lazy {
-        ProgramarSincronizacionUseCase(socioRepository, envioScheduler) // HU06: también reintenta los envíos
+        // HU06: también reintenta los envíos. HU07: baja las decisiones y registra el token de avisos
+        ProgramarSincronizacionUseCase(socioRepository, envioScheduler, seguimientoRepository, avisosRepository)
     }
     override val observarConexion by lazy { ObservarConexionUseCase(conectividadRepository) }
 
@@ -208,4 +229,20 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val observarExpertos by lazy { ObservarExpertosUseCase(revisionRepository) }
     override val analizarSolicitud by lazy { AnalizarSolicitudUseCase(revisionRepository) }
     override val descargarFotoObra by lazy { DescargarFotoObraUseCase(revisionRepository) }
+    // HU07 · Parte 2: decisión del Anfitrión (PDF + Storage + Cloud Function decidirSolicitud)
+    private val decisionRepository: DecisionRepository by lazy {
+        DecisionRepositoryImpl(contexto, auth, db, storage, functions, GeneradorPdf())
+    }
+    override val aprobarSolicitud by lazy { AprobarSolicitudUseCase(decisionRepository) }
+    override val rechazarSolicitud by lazy { RechazarSolicitudUseCase(decisionRepository) }
+    override val descargarDocumento by lazy { DescargarDocumentoUseCase(decisionRepository) }
+    // HU07 · Parte 2: la decisión baja de Firestore a Room (WorkManager)
+    private val seguimientoRepository: SeguimientoRepository by lazy {
+        SeguimientoRepositoryImpl(contexto, auth, db, baseDeDatos)
+    }
+    override val sincronizarSolicitudes by lazy { SincronizarSolicitudesUseCase(seguimientoRepository) }
+    override val programarSeguimiento by lazy { ProgramarSeguimientoUseCase(seguimientoRepository) }
+    // HU07 · Parte 2: token de Firebase Cloud Messaging en tokens/{uid}
+    private val avisosRepository: AvisosRepository by lazy { AvisosRepositoryImpl(auth, db, alcanceApp) }
+    override val guardarToken by lazy { GuardarTokenUseCase(avisosRepository) }
 }

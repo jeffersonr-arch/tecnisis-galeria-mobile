@@ -139,7 +139,9 @@ class RevisionRepositoryImpl(
             fechaEnvio = doc.getTimestamp("fechaEnvio")?.toDate()?.time,
             obras = obras
                 .sortedBy { it.getTimestamp("fechaRegistro")?.toDate()?.time ?: 0L }
-                .map { it.aObraEnRevision() }
+                .map { it.aObraEnRevision() },
+            motivoRechazo = doc.getString("motivoRechazo"),                         // Parte 2
+            fechaResolucion = doc.getTimestamp("fechaResolucion")?.toDate()?.time   // Parte 2
         )
     }
 
@@ -168,7 +170,8 @@ class RevisionRepositoryImpl(
             val uid = mapa["uid"] as? String ?: return@mapNotNull null
             CandidatoExperto(uid, (mapa["afinidad"] as? Number)?.toInt() ?: 0)
         },
-        recomendadoUid = getString("recomendadoUid")
+        recomendadoUid = getString("recomendadoUid"),
+        expertoAsignadoUid = getString("expertoUid") // Parte 2: lo escribe decidirSolicitud al aprobar
     )
 
     private fun DocumentSnapshot.aExperto() = PerfilEspecialista(

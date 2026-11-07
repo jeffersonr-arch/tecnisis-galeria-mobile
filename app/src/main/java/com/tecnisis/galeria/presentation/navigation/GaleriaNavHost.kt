@@ -42,7 +42,10 @@ import com.tecnisis.galeria.presentation.solicitudes.SolicitudesRoute
 @Composable
 fun GaleriaNavHost(
     navController: NavHostController = rememberNavController(),
-    sesionViewModel: SesionViewModel = viewModel(factory = SesionViewModel.Factory)
+    sesionViewModel: SesionViewModel = viewModel(factory = SesionViewModel.Factory),
+    abrirMisObras: Boolean = false,          // Se tocó la notificación de la decisión
+    onMisObrasAbierta: () -> Unit = {}       // Avisa a MainActivity que ya se atendió
+
 ) {
     val usuario by sesionViewModel.usuario.collectAsState()
     val entrada by navController.currentBackStackEntryAsState()
@@ -74,6 +77,20 @@ fun GaleriaNavHost(
             }
         }
         rolAnterior = rolNuevo
+    }
+
+    LaunchedEffect(abrirMisObras, usuario?.rol, rutaActual) {
+        if (abrirMisObras && usuario?.rol == Rol.SOCIO_ACTIVO &&
+            rutaActual != null && rutaActual != Pantalla.Login.name
+        ) {
+            if (rutaActual != Pantalla.MisObras.name) {
+                navController.navigate(Pantalla.MisObras.name) {
+                    popUpTo(Rol.SOCIO_ACTIVO.pantallaInicio().name)
+                    launchSingleTop = true
+                }
+            }
+            onMisObrasAbierta()
+        }
     }
 
     Scaffold(

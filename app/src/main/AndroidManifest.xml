@@ -35,7 +35,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
+        <!-- HU07: recibe los avisos de Firebase Cloud Messaging (decisión del Anfitrión) -->
+        <service
+            android:name=".data.push.MensajeriaService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <!-- HU06: le da a la app de cámara un content:// donde escribir la foto -->
         <provider
             android:name="androidx.core.content.FileProvider"

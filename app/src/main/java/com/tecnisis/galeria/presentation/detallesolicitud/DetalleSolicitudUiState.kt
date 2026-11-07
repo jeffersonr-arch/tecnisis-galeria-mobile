@@ -1,5 +1,6 @@
 package com.tecnisis.galeria.presentation.detallesolicitud
 
+import com.tecnisis.galeria.domain.model.CopiaDocumento
 import com.tecnisis.galeria.domain.model.EstadoAnalisis
 import com.tecnisis.galeria.domain.model.EstadoSolicitud
 import com.tecnisis.galeria.domain.model.PerfilEspecialista
@@ -8,8 +9,11 @@ import com.tecnisis.galeria.domain.model.OpcionExperto
 import com.tecnisis.galeria.domain.model.SolicitudEnRevision
 import com.tecnisis.galeria.domain.model.analisisVencido
 import com.tecnisis.galeria.domain.model.expertoValido
+import com.tecnisis.galeria.domain.model.motivoSugerido
 import com.tecnisis.galeria.domain.model.opcionesPara
 import com.tecnisis.galeria.domain.model.todasConExperto
+
+enum class DialogoDecision { APROBAR, RECHAZAR }
 
 data class DetalleSolicitudUiState(
     val cargando: Boolean = true,
@@ -22,7 +26,14 @@ data class DetalleSolicitudUiState(
     val llamandoAnalisis: Boolean = false,              // la llamada Retrofit está en marcha
     val ahora: Long = System.currentTimeMillis(),       // reloj del celular, solo para mostrar "Reintentar"
     val errorCarga: String? = null,
-    val aviso: String? = null
+    val aviso: String? = null,
+    // Parte 2: decisión y documentos
+    val dialogo: DialogoDecision? = null,
+    val motivo: String = "",
+    val mostrarErrorMotivo: Boolean = false,
+    val decidiendo: Boolean = false,                    // generando PDF, subiendo y llamando a la función
+    val abriendo: CopiaDocumento? = null,               // copia que se está descargando
+    val pdfParaAbrir: String? = null                    // ruta del PDF listo para abrir (lo consume la Route)
 ) {
     private val analisis: EstadoAnalisis
         get() = solicitud?.analisis ?: EstadoAnalisis.PENDIENTE
@@ -61,4 +72,30 @@ data class DetalleSolicitudUiState(
 
     val obraEnHoja: ObraEnRevision?
         get() = obras.firstOrNull { it.id == obraCambiando }
+
+    // ---------- Parte 2 ----------
+
+    val aprobada: Boolean
+        get() = solicitud?.estado == EstadoSolicitud.APROBADA
+
+    /** Ya resuelta, el Experto se muestra aunque ahora esté ocupado (su carga subió al aprobar). */
+    fun expertoAsignado(obra: ObraEnRevision): PerfilEspecialista? =
+        expertos.firstOrNull { it.uid == obra.expertoAsignadoUid }
+
+    /** Texto sobre los botones: por qué Aprobar está apagado, o qué está pasando. */
+    val ayudaDecision: String?
+        get() = when {
+            decidiendo -> "Generando los documentos y guardando la decisión…"
+            !analisisListo -> "Podrás aprobar cuando termine el análisis."
+            !puedeAprobar -> "Para aprobar, todas las obras deben tener Experto."
+            else -> null
+        }
+
+    /** Resumen del diálogo Aprobar: cada obra con el Experto elegido. */
+    val filasAprobacion: List<FilaAprobacion>
+        get() = obras.mapNotNull { obra -> expertoDe(obra)?.let { FilaAprobacion(obra.titulo, it.nombre) } }
+
+    /** Texto que se ofrece en el diálogo Rechazar si falta Experto en alguna obra. */
+    val sugerenciaMotivo: String?
+        get() = if (analisisListo) motivoSugerido(obras, expertos, seleccion) else null
 }

@@ -1,6 +1,13 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // HU07: Storage consulta Firestore (rol del usuario y estado de la solicitud)
+    function esAnfitrion() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol == 'anfitrion';
+    }
+
     // HU06: foto de cada obra en obras/{uid}/{idObra}.jpg; solo el dueño la sube y nadie la borra
     match /obras/{uid}/{archivo} {
       allow read: if request.auth != null;
@@ -9,6 +16,26 @@ service firebase.storage {
         && request.resource != null
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType == 'image/jpeg';
+    }
+
+    // HU07 · Parte 2: documento por duplicado en documentos/{solicitudId}/archivo.pdf y artista.pdf.
+    // El Anfitrión lo sube antes de decidir (la solicitud sigue "enviada") y lo lee siempre.
+    // El socio solo lee su copia (artista.pdf), de su solicitud y cuando ya está resuelta.
+    match /documentos/{solicitudId}/{archivo} {
+      function solicitud() {
+        return firestore.get(/databases/(default)/documents/solicitudes/$(solicitudId)).data;
+      }
+      allow read: if esAnfitrion()
+        || (request.auth != null
+            && archivo == 'artista.pdf'
+            && solicitud().uid == request.auth.uid
+            && solicitud().estado in ['aprobada', 'rechazada']);
+      allow write: if esAnfitrion()
+        && archivo in ['archivo.pdf', 'artista.pdf']
+        && solicitud().estado == 'enviada'
+        && request.resource != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
     }
   }
 }
