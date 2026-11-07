@@ -7,7 +7,7 @@ import com.tecnisis.galeria.domain.model.EstadoObra
 import com.tecnisis.galeria.domain.model.Obra
 import com.tecnisis.galeria.domain.model.Tecnica
 
-/** Tabla "obra" (HU06). El índice acelera "las obras de esta solicitud". */
+/** Tabla "obra" (HU06). El índice acelera "las obras de esta solicitud". Versión 4 (HU08): + comentarioVeredicto. */
 @Entity(tableName = "obra", indices = [Index("solicitudId")])
 data class ObraEntity(
     @PrimaryKey val id: String,
@@ -22,7 +22,8 @@ data class ObraEntity(
     val fotoUrl: String?,
     val nota: String,
     val estado: String,      // EstadoObra.valorFirestore
-    val creadaEn: Long
+    val creadaEn: Long,
+    val comentarioVeredicto: String? = null // HU08: lo baja la sincronización cuando el Especialista evalúa
 )
 
 fun ObraEntity.aDominio() = Obra(
@@ -37,5 +38,6 @@ fun ObraEntity.aDominio() = Obra(
     fotoUrl = fotoUrl,
     nota = nota,
     estado = EstadoObra.desdeValor(estado),
-    creadaEn = creadaEn
+    creadaEn = creadaEn,
+    comentarioVeredicto = comentarioVeredicto
 )

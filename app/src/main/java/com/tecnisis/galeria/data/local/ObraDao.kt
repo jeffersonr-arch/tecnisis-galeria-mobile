@@ -62,4 +62,9 @@ interface ObraDao {
 
     @Query("UPDATE obra SET estado = :estado WHERE id = :id")
     suspend fun cambiarEstadoObra(id: String, estado: String)
+
+    // ---------- HU08: el veredicto del Especialista de Arte ----------
+
+    @Query("UPDATE obra SET estado = :estado, comentarioVeredicto = :comentario WHERE id = :id")
+    suspend fun guardarEstadoYComentario(id: String, estado: String, comentario: String?)
 }
