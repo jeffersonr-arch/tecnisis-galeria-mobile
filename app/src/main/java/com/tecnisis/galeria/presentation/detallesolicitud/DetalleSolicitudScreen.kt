@@ -60,6 +60,7 @@ import com.tecnisis.galeria.presentation.componentes.abrirPdf
 import com.tecnisis.galeria.presentation.componentes.Aviso
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
 import com.tecnisis.galeria.presentation.componentes.ChipColor
+import com.tecnisis.galeria.presentation.componentes.ChipEstadoObra
 import com.tecnisis.galeria.presentation.componentes.FilaExperto
 import com.tecnisis.galeria.presentation.componentes.FotoRemota
 import com.tecnisis.galeria.presentation.componentes.TarjetaGaleria
@@ -331,9 +332,13 @@ private fun TarjetaObra(
                     .height(170.dp)
             )
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column {
-                    Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
-                    Text("${obra.tecnica.etiqueta} · ${medidas(obra)}", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
+                        Text("${obra.tecnica.etiqueta} · ${medidas(obra)}", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
+                    }
+                    // Ya resuelta, cada obra muestra su estado (en evaluación, aceptada, rechazada o no admitida)
+                    if (!uiState.enRevision) ChipEstadoObra(obra.estado)
                 }
                 if (obra.nota.isNotBlank()) {
                     Column {
