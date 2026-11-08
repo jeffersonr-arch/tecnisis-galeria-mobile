@@ -30,6 +30,8 @@ import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudRoute
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
+import com.tecnisis.galeria.presentation.evaluacion.DetalleObraAsignadaRoute
+import com.tecnisis.galeria.presentation.evaluacion.DetalleObraAsignadaViewModel
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
 import com.tecnisis.galeria.presentation.obras.MisObrasRoute
@@ -211,8 +213,16 @@ fun GaleriaNavHost(
             }
             composable(Pantalla.ObrasAsignadas.name) {
                 ObrasAsignadasRoute(
-                    onAbrir = { }
+                    onAbrir = { id -> navController.navigate("${Pantalla.DetalleObraAsignada.name}/$id") }
                 )
+            }
+            composable(
+                route = "${Pantalla.DetalleObraAsignada.name}/{${DetalleObraAsignadaViewModel.ARG_ID}}",
+                arguments = listOf(
+                    navArgument(DetalleObraAsignadaViewModel.ARG_ID) { type = NavType.StringType }
+                )
+            ) {
+                DetalleObraAsignadaRoute(onVolver = volver)
             }
         }
     }
