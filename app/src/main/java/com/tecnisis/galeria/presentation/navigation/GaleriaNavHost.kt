@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tecnisis.galeria.domain.model.Rol
+import com.tecnisis.galeria.presentation.asignadas.ObrasAsignadasRoute
 import com.tecnisis.galeria.presentation.bandeja.BandejaRoute
 import com.tecnisis.galeria.presentation.componentes.BarraInferior
 import com.tecnisis.galeria.presentation.componentes.OpcionBarra
@@ -207,6 +208,11 @@ fun GaleriaNavHost(
                 )
             ) {
                 DetalleSolicitudRoute(onVolver = volver)
+            }
+            composable(Pantalla.ObrasAsignadas.name) {
+                ObrasAsignadasRoute(
+                    onAbrir = { }
+                )
             }
         }
     }
