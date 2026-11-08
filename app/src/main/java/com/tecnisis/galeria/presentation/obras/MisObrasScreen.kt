@@ -367,12 +367,26 @@ private fun pasosResuelta(s: SolicitudExhibicion): List<PasoAvance> {
     return if (s.estado == EstadoSolicitud.APROBADA) listOf(
         enviada,
         PasoAvance("Asignación de expertos", "Aprobada$fecha", EstadoPaso.COMPLETO),
-        PasoAvance("Evaluación artística", "Tus obras están con los Expertos", EstadoPaso.ACTUAL)
+        pasoEvaluacion(s)
     ) else listOf(
         enviada,
         PasoAvance("Revisión del Anfitrión", "Rechazada$fecha", EstadoPaso.COMPLETO)
     )
 }
+
+/** En curso mientras alguna obra siga "en evaluación"; completo cuando todas tienen veredicto. */
+private fun pasoEvaluacion(s: SolicitudExhibicion): PasoAvance = when {
+    s.evaluacionTerminada -> PasoAvance(
+        "Evaluación artística",
+        "Terminada · ${cantidadTexto(s.cantidadAceptadas, "aceptada", "aceptadas")}, " +
+                cantidadTexto(s.cantidadRechazadas, "rechazada", "rechazadas"),
+        EstadoPaso.COMPLETO
+    )
+    s.cantidadEvaluadas == 0 -> PasoAvance("Evaluación artística", "Tus obras están con los Expertos", EstadoPaso.ACTUAL)
+    else -> PasoAvance("Evaluación artística", "${s.cantidadEvaluadas} de ${s.obras.size} obras evaluadas", EstadoPaso.ACTUAL)
+}
+
+private fun cantidadTexto(n: Int, singular: String, plural: String) = "$n ${if (n == 1) singular else plural}"
 
 @Composable
 private fun AvisoEnvio(hayConexion: Boolean) {
