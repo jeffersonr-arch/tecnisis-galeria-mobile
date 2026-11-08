@@ -570,11 +570,22 @@ internal fun medidasDe(obra: Obra): String =
 private fun obraEjemplo(
     id: String, titulo: String, tecnica: Tecnica, alto: Double, ancho: Double,
     profundidad: Double? = null, nota: String = "", subida: Boolean = false,
-    estado: EstadoObra = EstadoObra.BORRADOR
+    estado: EstadoObra = EstadoObra.BORRADOR, comentario: String? = null
 ) = Obra(
     id = id, solicitudId = "s1", titulo = titulo, tecnica = tecnica, altoCm = alto, anchoCm = ancho,
     profundidadCm = profundidad, fotoLocal = "", fotoUrl = if (subida) "https://ejemplo" else null,
-    nota = nota, estado = estado, creadaEn = 0L
+    nota = nota, estado = estado, creadaEn = 0L, comentarioVeredicto = comentario
+)
+
+private fun solicitudEvaluada(terminada: Boolean) = solicitudEjemplo(EstadoSolicitud.APROBADA).copy(
+    obras = listOf(
+        obraEjemplo("1", "Mañana en Paracas", Tecnica.OLEO, 60.0, 80.0, subida = true, estado = EstadoObra.ACEPTADA,
+            comentario = "Buena técnica y buen manejo de la luz. Cuidar el marco para la exhibición."),
+        obraEjemplo("2", "Telar de Ocongate", Tecnica.TEXTIL, 120.0, 90.0, estado = EstadoObra.RECHAZADA,
+            comentario = "Los bordes del tejido están deshilachados; no está en condiciones de exhibirse."),
+        obraEjemplo("3", "Vasija nocturna", Tecnica.CERAMICA, 35.0, 22.0, 22.0,
+            estado = if (terminada) EstadoObra.ACEPTADA else EstadoObra.EN_EVALUACION)
+    )
 )
 
 private fun solicitudEjemplo(estado: EstadoSolicitud): SolicitudExhibicion {
@@ -646,3 +657,14 @@ private fun MisObrasAprobadaPreview() =
 @Composable
 private fun MisObrasRechazadaPreview() =
     VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEjemplo(EstadoSolicitud.RECHAZADA)))
+
+@Preview(name = "Evaluación en curso · claro", showBackground = true, heightDp = 1150)
+@Preview(name = "Evaluación en curso · nocturno", showBackground = true, heightDp = 1150, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MisObrasEvaluacionPreview() =
+    VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEvaluada(terminada = false)))
+
+@Preview(name = "Evaluación terminada", showBackground = true, heightDp = 1150)
+@Composable
+private fun MisObrasEvaluadaPreview() =
+    VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEvaluada(terminada = true)))
