@@ -435,30 +435,50 @@ private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: 
         border = BorderStroke(1.dp, c.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            FotoObra(obra.fotoLocal, Modifier.size(72.dp), ladoMaximo = 240)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "${obra.tecnica.etiqueta} · ${medidasDe(obra)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = c.onSurfaceVariant
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val (texto, fondo, color) = chipDeObra(obra, estadoSolicitud)
-                    ChipTexto(texto, fondo, color)
-                    if (obra.nota.isNotBlank()) {
-                        Spacer(Modifier.width(10.dp))
-                        Icon(Icons.Outlined.Mic, contentDescription = null, tint = c.onSurfaceVariant, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(3.dp))
-                        Text("Nota", style = MaterialTheme.typography.labelMedium, color = c.onSurfaceVariant)
+        Column {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                FotoObra(obra.fotoLocal, Modifier.size(72.dp), ladoMaximo = 240)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "${obra.tecnica.etiqueta} · ${medidasDe(obra)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val (texto, fondo, color) = chipDeObra(obra, estadoSolicitud)
+                        ChipTexto(texto, fondo, color)
+                        if (obra.nota.isNotBlank()) {
+                            Spacer(Modifier.width(10.dp))
+                            Icon(Icons.Outlined.Mic, contentDescription = null, tint = c.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text("Nota", style = MaterialTheme.typography.labelMedium, color = c.onSurfaceVariant)
+                        }
                     }
                 }
+                if (editable) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Editar", tint = c.outline)
+                }
             }
-            if (editable) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Editar", tint = c.outline)
+            // El comentario del Especialista (sin su nombre). Si no escribió nada, no aparece nada
+            val comentario = obra.comentarioVeredicto
+            if (obra.estado.tieneVeredicto && !comentario.isNullOrBlank()) {
+                val aceptada = obra.estado != EstadoObra.RECHAZADA
+                val color = if (aceptada) c.onTertiaryContainer else c.onErrorContainer
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (aceptada) c.tertiaryContainer else c.errorContainer)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text("COMENTARIO DEL EXPERTO", style = MaterialTheme.typography.labelSmall, color = color)
+                    Spacer(Modifier.height(3.dp))
+                    Text(comentario, style = MaterialTheme.typography.bodyMedium, color = color)
+                }
             }
         }
     }
