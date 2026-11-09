@@ -47,6 +47,10 @@ import com.tecnisis.galeria.presentation.theme.galeria
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.content.res.Configuration
+import androidx.compose.ui.tooling.preview.Preview
+import com.tecnisis.galeria.domain.model.Tecnica
+import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 
 private val formatoDia = SimpleDateFormat("d MMM", Locale.forLanguageTag("es-PE"))
 
@@ -231,3 +235,51 @@ private fun EstadoVacio(modifier: Modifier = Modifier) {
         )
     }
 }
+
+private fun rechazadaEjemplo(
+    id: String, titulo: String, tecnica: Tecnica, socio: String?, numero: String?,
+    especialista: String?, motivo: String, fecha: Long, documento: Boolean = true
+) = ObraRechazada(
+    id = id, titulo = titulo, tecnica = tecnica, altoCm = 120.0, anchoCm = 90.0, profundidadCm = null,
+    nombreSocio = socio, numeroSocio = numero, evaluadaPorNombre = especialista, motivo = motivo, fechaVeredicto = fecha,
+    documentoRechazo = if (documento) listOf("documentos_obras/$id/archivo.pdf", "documentos_obras/$id/artista.pdf") else emptyList()
+)
+
+private val rechazadasEjemplo = listOf(
+    rechazadaEjemplo(
+        "1", "Telar de Ocongate", Tecnica.TEXTIL, "María Elena López Díaz", "SOC-0002", "Jorge Huamán Ccori",
+        "Los bordes del tejido están deshilachados; no está en condiciones de exhibirse.", 1_794_700_000_000
+    ),
+    rechazadaEjemplo(
+        "2", "Esquina de Barranco", Tecnica.ACRILICO, "Rosa Quispe Mamani", "SOC-0001", "Andrés Salazar Ríos",
+        "La firma tapa parte de la composición y el lienzo está manchado.", 1_794_600_000_000
+    ),
+    rechazadaEjemplo(
+        "3", "Telar de prueba", Tecnica.TEXTIL, "María Elena López Díaz", "SOC-0002", null,
+        "Obra rechazada en la prueba de la HU08, antes del documento.", 1_794_100_000_000, documento = false
+    )
+)
+
+@Composable
+private fun VistaPrevia(uiState: ObrasRechazadasUiState) {
+    TecnisisGaleriaTheme {
+        ObrasRechazadasScreen(uiState, remember { SnackbarHostState() }, onVolver = {}, onVerDocumento = {})
+    }
+}
+
+@Preview(name = "Con obras · claro", showBackground = true, heightDp = 1100)
+@Preview(name = "Con obras · nocturno", showBackground = true, heightDp = 1100, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ObrasRechazadasPreview() =
+    VistaPrevia(ObrasRechazadasUiState(cargando = false, obras = rechazadasEjemplo))
+
+@Preview(name = "Abriendo el PDF", showBackground = true, heightDp = 1100)
+@Composable
+private fun ObrasRechazadasAbriendoPreview() =
+    VistaPrevia(ObrasRechazadasUiState(cargando = false, obras = rechazadasEjemplo, abriendo = "1"))
+
+@Preview(name = "Sin obras · claro", showBackground = true)
+@Preview(name = "Sin obras · nocturno", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ObrasRechazadasVaciaPreview() =
+    VistaPrevia(ObrasRechazadasUiState(cargando = false))
