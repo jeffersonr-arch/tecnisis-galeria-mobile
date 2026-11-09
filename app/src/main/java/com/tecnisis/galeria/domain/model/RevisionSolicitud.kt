@@ -33,7 +33,8 @@ data class ObraEnRevision(
     val candidatos: List<CandidatoExperto>,    // de mayor a menor afinidad
     val recomendadoUid: String?,               // null = ningún Experto disponible
     val expertoAsignadoUid: String? = null,    // Parte 2: el que quedó al aprobar (puede no ser el recomendado)
-    val estado: EstadoObra = EstadoObra.ENVIADA // HU08: en evaluación, aceptada o rechazada (el Anfitrión ve el veredicto)
+    val estado: EstadoObra = EstadoObra.ENVIADA, // HU08: en evaluación, aceptada o rechazada (el Anfitrión ve el veredicto)
+    val documentoRechazo: List<String> = emptyList() // HU09: las 2 rutas del PDF de rechazo (vacía si no hay)
 )
 
 data class SolicitudEnRevision(

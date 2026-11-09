@@ -25,7 +25,8 @@ data class ObraAsignada(
     val fechaAsignacion: Long?,        // cuándo se aprobó la solicitud (decidirSolicitud)
     val fechaEnvio: Long?,
     val comentarioVeredicto: String?,  // null si no hay veredicto o si se aceptó sin comentario
-    val fechaVeredicto: Long?
+    val fechaVeredicto: Long?,
+    val documentoRechazo: List<String> = emptyList() // HU09: las 2 rutas del PDF de rechazo (vacía si no hay)
 ) {
     /** Solo una obra "en_evaluacion" se puede aceptar o rechazar. */
     val porEvaluar: Boolean
@@ -40,6 +41,10 @@ data class ObraAsignada(
 
     val numeroSocioVisible: String
         get() = numeroSocio?.takeIf { it.isNotBlank() } ?: SIN_DATO
+
+    /** HU09: el botón del PDF solo aparece si la obra tiene documentoRechazo (las rechazadas antes de la HU09 no lo tienen). */
+    val tieneDocumentoRechazo: Boolean
+        get() = documentoRechazo.isNotEmpty()
 }
 
 /** Pestaña "Por evaluar": solo "en_evaluacion", la asignada hace más tiempo primero (orden de llegada). */
