@@ -604,6 +604,18 @@ exports.registrarVeredicto = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Al rechazar, el comentario es obligatorio (1 a 500 caracteres)");
   }
 
+  // HU09: al rechazar, los 2 PDF deben estar en Storage antes de cambiar nada
+  const rutasRechazo = COPIAS.map((c) => `documentos_obras/${obraId}/${c}`);
+  if (estadoNuevo === "rechazada") {
+    const bucket = getStorage().bucket();
+    for (const ruta of rutasRechazo) {
+      const [existe] = await bucket.file(ruta).exists();
+      if (!existe) {
+        throw noCumple("Faltan los documentos de rechazo de la obra", "faltan_documentos");
+      }
+    }
+  }
+
   // 2) Todo junto o nada: la obra y la carga del Especialista
   const refObra = db.doc(`obras/${obraId}`);
   const refExperto = db.doc(`expertos/${uid}`);
@@ -625,6 +637,8 @@ exports.registrarVeredicto = onCall(async (request) => {
       veredictoComentario: comentario === "" ? null : comentario,
       fechaVeredicto: FieldValue.serverTimestamp(),
       evaluadaPor: uid,
+      evaluadaPorNombre: experto.exists ? (experto.get("nombre") || null) : null, // HU09
+      documentoRechazo: estadoNuevo === "rechazada" ? rutasRechazo : null, // HU09
     });
     if (experto.exists) {
       const carga = Number(experto.get("carga")) || 0;
