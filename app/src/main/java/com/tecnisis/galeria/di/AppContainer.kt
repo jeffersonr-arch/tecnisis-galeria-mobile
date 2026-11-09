@@ -261,7 +261,9 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     private val avisosRepository: AvisosRepository by lazy { AvisosRepositoryImpl(auth, db, alcanceApp) }
     override val guardarToken by lazy { GuardarTokenUseCase(avisosRepository) }
     // HU08: evaluación del Especialista de Arte (Firestore + Cloud Function registrarVeredicto) y ML Kit en el celular
-    private val evaluacionRepository: EvaluacionRepository by lazy { EvaluacionRepositoryImpl(auth, db, functions) }
+    private val evaluacionRepository: EvaluacionRepository by lazy {
+        EvaluacionRepositoryImpl(contexto, auth, db, storage, functions, GeneradorPdf()) // HU09: + PDF de rechazo
+    }
     private val etiquetadoRepository: EtiquetadoRepository by lazy { EtiquetadoRepositoryImpl() }
     override val observarObrasAsignadas by lazy { ObservarObrasAsignadasUseCase(evaluacionRepository) }
     override val observarObraAsignada by lazy { ObservarObraAsignadaUseCase(evaluacionRepository) }

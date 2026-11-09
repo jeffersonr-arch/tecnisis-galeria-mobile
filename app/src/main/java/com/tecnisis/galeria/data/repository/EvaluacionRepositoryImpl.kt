@@ -22,16 +22,34 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
+import android.content.Context
+import android.net.Uri
+import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
+import com.google.firebase.storage.StorageMetadata
+import com.tecnisis.galeria.data.pdf.GeneradorPdf
+import com.tecnisis.galeria.domain.model.CopiaDocumento
+import com.tecnisis.galeria.domain.model.documentoRechazoDe
+import com.tecnisis.galeria.domain.model.rutaDocumentoObra
+import java.io.File
 
 /**
  * HU08: Firestore en tiempo real para el Especialista de Arte y la Cloud Function registrarVeredicto.
  * Las reglas solo le dejan leer las obras con expertoUid == su uid, por eso cada consulta lleva ese filtro.
+ * HU09: al rechazar, el celular genera el documento por duplicado y lo sube ANTES de llamar a la función,
+ * que revisa que exista: si falla la subida, no se guarda nada.
  */
 class EvaluacionRepositoryImpl(
+    private val contexto: Context,
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
-    private val functions: FirebaseFunctions
+    private val storage: FirebaseStorage,
+    private val functions: FirebaseFunctions,
+    private val generador: GeneradorPdf
 ) : EvaluacionRepository {
+
+    private val metadatosPdf = StorageMetadata.Builder().setContentType("application/pdf").build()
 
     override fun observarAsignadas(): Flow<List<ObraAsignada>> = callbackFlow {
         val uid = auth.currentUser?.uid ?: run {
@@ -78,6 +96,7 @@ class EvaluacionRepositoryImpl(
 
     override suspend fun registrarVeredicto(obraId: String, tipo: TipoVeredicto, comentario: String): Result<Unit> =
         try {
+            if (tipo == TipoVeredicto.RECHAZAR) subirDocumentoRechazo(obraId, comentario)
             functions.getHttpsCallable("registrarVeredicto")
                 .call(mapOf("obraId" to obraId, "veredicto" to tipo.valorFuncion, "comentario" to comentario))
                 .await()
@@ -88,6 +107,30 @@ class EvaluacionRepositoryImpl(
             Log.e(TAG, "No se pudo registrar el veredicto", e)
             Result.failure(mapear(e))
         }
+
+    /** HU09: dibuja las 2 copias en cache/documentos y las sube a documentos_obras/{obraId}/. */
+    private suspend fun subirDocumentoRechazo(obraId: String, motivo: String) {
+        val uid = auth.currentUser?.uid ?: throw EvaluacionError.SinPermiso
+        // Lo que va en el PDF, leído del servidor (sin internet falla aquí, antes de subir nada)
+        val doc = db.collection(OBRAS).document(obraId).get(Source.SERVER).await()
+        if (!doc.exists()) throw EvaluacionError.NoEncontrada
+        val obra = doc.aObraAsignada()
+        if (!obra.porEvaluar) throw EvaluacionError.YaEvaluada
+        val nombre = db.collection(EXPERTOS).document(uid).get(Source.SERVER).await().getString("nombre").orEmpty()
+        val documento = documentoRechazoDe(obra, motivo, nombre, System.currentTimeMillis())
+
+        CopiaDocumento.entries.forEach { copia ->
+            val archivo = File(File(contexto.cacheDir, "documentos"), "obra-$obraId-${copia.archivo}")
+            try {
+                generador.generarRechazoObra(documento, copia, archivo)
+            } catch (e: Exception) {
+                Log.e(TAG, "No se pudo generar ${copia.archivo}", e)
+                throw EvaluacionError.PdfNoGenerado
+            }
+            storage.reference.child(rutaDocumentoObra(obraId, copia))
+                .putFile(Uri.fromFile(archivo), metadatosPdf).await()
+        }
+    }
 
     private fun DocumentSnapshot.aObraAsignada() = ObraAsignada(
         id = id,
@@ -106,7 +149,8 @@ class EvaluacionRepositoryImpl(
         fechaAsignacion = getTimestamp("fechaAsignacion")?.toDate()?.time,
         fechaEnvio = getTimestamp("fechaEnvio")?.toDate()?.time,
         comentarioVeredicto = getString("veredictoComentario")?.takeIf { it.isNotBlank() },
-        fechaVeredicto = getTimestamp("fechaVeredicto")?.toDate()?.time
+        fechaVeredicto = getTimestamp("fechaVeredicto")?.toDate()?.time,
+        documentoRechazo = (get("documentoRechazo") as? List<*>).orEmpty().filterIsInstance<String>() // HU09
     )
 
     private fun DocumentSnapshot.aFicha() = PerfilEspecialista(
@@ -134,6 +178,7 @@ class EvaluacionRepositoryImpl(
                 when ((e.details as? Map<*, *>)?.get("motivo")) {
                     "ya_evaluada" -> EvaluacionError.YaEvaluada
                     "no_asignada" -> EvaluacionError.NoAsignada
+                    "faltan_documentos" -> EvaluacionError.FaltanDocumentos // HU09
                     else -> EvaluacionError.Servidor(e.message ?: "Condición no cumplida")
                 }
             else -> EvaluacionError.Servidor(e.message ?: "Error en el servidor")
@@ -144,6 +189,15 @@ class EvaluacionRepositoryImpl(
             FirebaseFirestoreException.Code.PERMISSION_DENIED -> EvaluacionError.SinPermiso
             else -> EvaluacionError.Desconocido
         }
+
+        // HU09: la subida del PDF de rechazo
+        is StorageException -> when (e.errorCode) {
+            StorageException.ERROR_RETRY_LIMIT_EXCEEDED -> EvaluacionError.SinConexion
+            StorageException.ERROR_NOT_AUTHORIZED,
+            StorageException.ERROR_NOT_AUTHENTICATED -> EvaluacionError.SinPermiso
+            else -> EvaluacionError.FaltanDocumentos
+        }
+
         is FirebaseNetworkException, is IOException -> EvaluacionError.SinConexion
         else -> EvaluacionError.Desconocido
     }
