@@ -27,13 +27,13 @@ data class DetalleSolicitudUiState(
     val ahora: Long = System.currentTimeMillis(),       // reloj del celular, solo para mostrar "Reintentar"
     val errorCarga: String? = null,
     val aviso: String? = null,
-    // Parte 2: decisión y documentos
     val dialogo: DialogoDecision? = null,
     val motivo: String = "",
     val mostrarErrorMotivo: Boolean = false,
     val decidiendo: Boolean = false,                    // generando PDF, subiendo y llamando a la función
     val abriendo: CopiaDocumento? = null,               // copia que se está descargando
-    val pdfParaAbrir: String? = null                    // ruta del PDF listo para abrir (lo consume la Route)
+    val pdfParaAbrir: String? = null,                    // ruta del PDF listo para abrir (lo consume la Route)
+    val abriendoObra: String? = null                    // obra cuyo documento de rechazo se está descargando
 ) {
     private val analisis: EstadoAnalisis
         get() = solicitud?.analisis ?: EstadoAnalisis.PENDIENTE
