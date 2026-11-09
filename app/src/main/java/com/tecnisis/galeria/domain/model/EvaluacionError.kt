@@ -9,6 +9,8 @@ sealed class EvaluacionError : Exception() {
     data object YaEvaluada : EvaluacionError()         // la obra ya tiene veredicto
     data object NoEncontrada : EvaluacionError()
     data object FotoNoAnalizada : EvaluacionError()    // ML Kit no pudo leer la foto
+    data object PdfNoGenerado : EvaluacionError()      // HU09: no se pudo escribir el PDF de rechazo en el celular
+    data object FaltanDocumentos : EvaluacionError()   // HU09: el PDF de rechazo no se subió (no se guardó nada)
     data class Servidor(val detalle: String) : EvaluacionError()
     data object Desconocido : EvaluacionError()
 }

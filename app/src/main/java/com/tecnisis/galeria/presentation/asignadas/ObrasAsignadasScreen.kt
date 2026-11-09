@@ -222,14 +222,16 @@ internal fun obraAsignadaEjemplo(
     tecnica: Tecnica,
     estado: EstadoObra = EstadoObra.EN_EVALUACION,
     socio: String? = "Rosa Quispe Mamani",
-    comentario: String? = null
+    comentario: String? = null,
+    documento: Boolean = false
 ) = ObraAsignada(
     id = id, solicitudId = "s", titulo = titulo, tecnica = tecnica, altoCm = 60.0, anchoCm = 80.0,
     profundidadCm = null, nota = "Pinté la bahía al amanecer, cuando los botes todavía no salen.", fotoRuta = "",
     descripcionIa = "Paisaje marino al óleo: una bahía en calma con luz de amanecer, en azules intensos y ocres cálidos.",
     nombreSocio = socio, numeroSocio = socio?.let { "SOC-0001" }, estado = estado,
     fechaAsignacion = 1_794_560_000_000, fechaEnvio = 1_794_500_000_000,
-    comentarioVeredicto = comentario, fechaVeredicto = if (estado.tieneVeredicto) 1_794_700_000_000 else null
+    comentarioVeredicto = comentario, fechaVeredicto = if (estado.tieneVeredicto) 1_794_700_000_000 else null,
+    documentoRechazo = if (documento) listOf("documentos_obras/$id/archivo.pdf", "documentos_obras/$id/artista.pdf") else emptyList()
 )
 
 @Preview(name = "Por evaluar · claro", showBackground = true, heightDp = 800)

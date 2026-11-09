@@ -74,6 +74,9 @@ import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.platform.LocalContext
+import com.tecnisis.galeria.presentation.componentes.FilaPdf
+import com.tecnisis.galeria.presentation.componentes.abrirPdf
 
 private val formatoDia = SimpleDateFormat("d MMM", Locale.forLanguageTag("es-PE"))
 private val formatoFecha = SimpleDateFormat("d MMM · h:mm a", Locale.forLanguageTag("es-PE"))
@@ -92,6 +95,13 @@ fun DetalleObraAsignadaRoute(
         viewModel.onAvisoMostrado()
     }
 
+    // El documento ya está en la caché; se abre con la app de PDF del celular
+    val contexto = LocalContext.current
+    LaunchedEffect(uiState.pdfParaAbrir) {
+        val ruta = uiState.pdfParaAbrir ?: return@LaunchedEffect
+        viewModel.onPdfAbierto(abrirPdf(contexto, ruta))
+    }
+
     // Mientras se guarda el veredicto no se sale (se cortaría a la mitad)
     BackHandler(enabled = uiState.guardando) { }
 
@@ -101,7 +111,8 @@ fun DetalleObraAsignadaRoute(
         onVolver = { if (!uiState.guardando) onVolver() },
         descargarFoto = viewModel::descargarFoto,
         onAceptar = viewModel::onAceptar,
-        onRechazar = viewModel::onRechazar
+        onRechazar = viewModel::onRechazar,
+        onVerDocumento = viewModel::onVerDocumento
     )
 
     val tipo = uiState.dialogo
@@ -130,7 +141,8 @@ fun DetalleObraAsignadaScreen(
     onVolver: () -> Unit,
     descargarFoto: suspend (String) -> ByteArray?,
     onAceptar: () -> Unit,
-    onRechazar: () -> Unit
+    onRechazar: () -> Unit,
+    onVerDocumento: () -> Unit = {}
 ) {
     val c = MaterialTheme.colorScheme
     Scaffold(
@@ -174,7 +186,7 @@ fun DetalleObraAsignadaScreen(
                         .height(230.dp)
                 )
                 Cabecera(obra)
-                if (obra.estado.tieneVeredicto) TarjetaVeredicto(obra)
+                if (obra.estado.tieneVeredicto) TarjetaVeredicto(obra, uiState.abriendoDocumento, onVerDocumento)
                 TarjetaEtiquetas(uiState.etiquetas)
                 DescripcionIa(obra.descripcionIa)
                 TarjetaPersonas(obra, uiState.ficha)
@@ -205,9 +217,9 @@ private fun Cabecera(obra: ObraAsignada) {
     }
 }
 
-/** Ya evaluada: quién y cuándo, y el comentario (si lo hay). */
+/** Ya evaluada: quién y cuándo, el comentario (si lo hay) y, si se rechazó, el documento (HU09). */
 @Composable
-private fun TarjetaVeredicto(obra: ObraAsignada) {
+private fun TarjetaVeredicto(obra: ObraAsignada, abriendoDocumento: Boolean, onVerDocumento: () -> Unit) {
     val c = MaterialTheme.colorScheme
     val aceptada = obra.estado != EstadoObra.RECHAZADA
     val (fondo, texto) = if (aceptada) c.tertiaryContainer to c.onTertiaryContainer else c.errorContainer to c.onErrorContainer
@@ -230,6 +242,17 @@ private fun TarjetaVeredicto(obra: ObraAsignada) {
         obra.comentarioVeredicto?.let { comentario ->
             Spacer(Modifier.height(10.dp))
             Bloque(fondo, texto, "TU COMENTARIO", comentario)
+        }
+        // Solo si la obra tiene documentoRechazo (las rechazadas antes de la HU09 no lo tienen)
+        if (!aceptada && obra.tieneDocumentoRechazo) {
+            Spacer(Modifier.height(10.dp))
+            FilaPdf(
+                titulo = "Documento de rechazo",
+                subtitulo = "Copia · Archivo de la galería",
+                onClick = onVerDocumento,
+                cargando = abriendoDocumento,
+                fondo = c.surfaceVariant
+            )
         }
         Spacer(Modifier.height(10.dp))
         Text(
@@ -444,4 +467,14 @@ private fun DetalleAceptadaPreview() = VistaPrevia(
 @Composable
 private fun DetalleRechazadaPreview() = VistaPrevia(
     obraAsignadaEjemplo("1", "Mañana en Paracas", Tecnica.OLEO, EstadoObra.RECHAZADA, comentario = "La pintura presenta craquelado en la esquina inferior.")
+)
+
+@Preview(name = "Rechazada con documento · claro", showBackground = true, heightDp = 1500)
+@Preview(name = "Rechazada con documento · nocturno", showBackground = true, heightDp = 1500, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DetalleRechazadaConDocumentoPreview() = VistaPrevia(
+    obraAsignadaEjemplo(
+        "1", "Telar de Ocongate", Tecnica.TEXTIL, EstadoObra.RECHAZADA,
+        comentario = "Los bordes del tejido están deshilachados; no está en condiciones de exhibirse.", documento = true
+    )
 )

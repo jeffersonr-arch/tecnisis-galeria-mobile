@@ -128,7 +128,8 @@ fun MisObrasRoute(
         onEnviar = viewModel::onEnviar,
         onConfirmarEnvio = confirmarEnvio,
         onCancelarEnvio = viewModel::onCancelarEnvio,
-        onVerDocumento = viewModel::onVerDocumento
+        onVerDocumento = viewModel::onVerDocumento,
+        onVerDocumentoObra = viewModel::onVerDocumentoObra
     )
 }
 
@@ -141,7 +142,8 @@ fun MisObrasScreen(
     onEnviar: () -> Unit,
     onConfirmarEnvio: () -> Unit,
     onCancelarEnvio: () -> Unit,
-    onVerDocumento: () -> Unit = {}
+    onVerDocumento: () -> Unit = {},
+    onVerDocumentoObra: (String) -> Unit = {}
 ) {
     Box(
         Modifier
@@ -152,7 +154,7 @@ fun MisObrasScreen(
         when {
             uiState.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
             uiState.sinObras -> EstadoVacio(onRegistrar)
-            else -> ListaObras(uiState, onRegistrar, onAbrirObra, onEnviar, onVerDocumento)
+            else -> ListaObras(uiState, onRegistrar, onAbrirObra, onEnviar, onVerDocumento, onVerDocumentoObra)
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
@@ -226,7 +228,8 @@ private fun ListaObras(
     onRegistrar: () -> Unit,
     onAbrirObra: (String) -> Unit,
     onEnviar: () -> Unit,
-    onVerDocumento: () -> Unit
+    onVerDocumento: () -> Unit,
+    onVerDocumentoObra: (String) -> Unit
 ) {
     val solicitud = uiState.solicitud ?: return
     val c = MaterialTheme.colorScheme
@@ -248,7 +251,9 @@ private fun ListaObras(
                     obra = obra,
                     estadoSolicitud = solicitud.estado,
                     editable = solicitud.esEditable,
-                    onClick = { onAbrirObra(obra.id) }
+                    onClick = { onAbrirObra(obra.id) },
+                    abriendoDocumento = uiState.abriendoObra == obra.id,
+                    onVerDocumento = { onVerDocumentoObra(obra.id) }
                 )
             }
         }
@@ -425,7 +430,7 @@ private fun pasosEnviada(s: SolicitudExhibicion) = listOf(
 )
 
 @Composable
-private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: Boolean, onClick: () -> Unit) {
+private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: Boolean, onClick: () -> Unit, abriendoDocumento: Boolean = false, onVerDocumento: () -> Unit = {}) {
     val c = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
@@ -479,6 +484,18 @@ private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: 
                     Spacer(Modifier.height(3.dp))
                     Text(comentario, style = MaterialTheme.typography.bodyMedium, color = color)
                 }
+            }
+            // El documento de rechazo (copia del artista). Si no existe, el ViewModel avisa
+            if (obra.estado == EstadoObra.RECHAZADA) {
+                FilaPdf(
+                    titulo = "Mi documento de rechazo",
+                    subtitulo = null,
+                    onClick = onVerDocumento,
+                    cargando = abriendoDocumento,
+                    icono = Icons.Outlined.FileDownload,
+                    fondo = c.surfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                )
             }
         }
     }

@@ -40,6 +40,7 @@ import com.tecnisis.galeria.presentation.obras.RegistrarObraViewModel
 import com.tecnisis.galeria.presentation.perfil.PerfilRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
+import com.tecnisis.galeria.presentation.rechazadas.ObrasRechazadasRoute
 import com.tecnisis.galeria.presentation.solicitudes.SolicitudesRoute
 
 @Composable
@@ -223,6 +224,10 @@ fun GaleriaNavHost(
                 )
             ) {
                 DetalleObraAsignadaRoute(onVolver = volver)
+            }
+            // Histórico de obras rechazadas del Gerente
+            composable(Pantalla.ObrasRechazadas.name) {
+                ObrasRechazadasRoute(onVolver = volver)
             }
         }
     }

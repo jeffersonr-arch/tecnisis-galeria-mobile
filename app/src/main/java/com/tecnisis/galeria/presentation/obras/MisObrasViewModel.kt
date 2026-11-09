@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoObraUseCase
 
 /** Lo que maneja el propio ViewModel (lo demás llega de Room y de la red). */
 private data class EstadoLocal(
@@ -28,14 +29,16 @@ private data class EstadoLocal(
     val enviando: Boolean = false,
     val mensaje: String? = null,
     val abriendoDocumento: Boolean = false,
-    val pdfParaAbrir: String? = null
+    val pdfParaAbrir: String? = null,
+    val abriendoObra: String? = null
 )
 
 class MisObrasViewModel(
     observarMiSolicitud: ObservarMiSolicitudUseCase,
     observarConexion: ObservarConexionUseCase,
     private val enviarSolicitud: EnviarSolicitudUseCase,
-    private val descargarDocumento: DescargarDocumentoUseCase
+    private val descargarDocumento: DescargarDocumentoUseCase,
+    private val descargarDocumentoObra: DescargarDocumentoObraUseCase
 ) : ViewModel() {
 
     private val local = MutableStateFlow(EstadoLocal())
@@ -54,7 +57,8 @@ class MisObrasViewModel(
             enviando = l.enviando,
             mensaje = l.mensaje,
             abriendoDocumento = l.abriendoDocumento,
-            pdfParaAbrir = l.pdfParaAbrir
+            pdfParaAbrir = l.pdfParaAbrir,
+            abriendoObra = l.abriendoObra
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MisObrasUiState())
 
@@ -86,6 +90,26 @@ class MisObrasViewModel(
         }
     }
 
+    /** Descarga la copia del artista del documento de rechazo de una obra. */
+    fun onVerDocumentoObra(obraId: String) {
+        if (local.value.abriendoObra != null) return
+        viewModelScope.launch {
+            local.update { it.copy(abriendoObra = obraId) }
+            descargarDocumentoObra(obraId, CopiaDocumento.ARTISTA)
+                .onSuccess { ruta -> local.update { it.copy(pdfParaAbrir = ruta) } }
+                .onFailure { e -> local.update { it.copy(mensaje = mensajeDocumentoObra(e)) } }
+            local.update { it.copy(abriendoObra = null) }
+        }
+    }
+
+    /** Si el archivo no existe, la obra se rechazó antes de que existiera el documento. */
+    private fun mensajeDocumentoObra(error: Throwable): String = when (error) {
+        DecisionError.NoEncontrada -> "Esta obra se rechazó antes de que existiera el documento"
+        DecisionError.SinConexion -> "Necesitas internet para descargar tu documento"
+        DecisionError.SinPermiso -> "Tu documento todavía no está disponible. Inténtalo en unos minutos"
+        else -> "No se pudo abrir tu documento. Inténtalo de nuevo"
+    }
+
     /** La Route ya abrió el PDF (o avisó que no hay app de PDF). */
     fun onPdfAbierto(abierto: Boolean) = local.update {
         it.copy(pdfParaAbrir = null, mensaje = if (abierto) it.mensaje else "Instala una app para ver PDF (por ejemplo, Google Drive)")
@@ -108,7 +132,13 @@ class MisObrasViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as GaleriaApplication).container
-                MisObrasViewModel(container.observarMiSolicitud, container.observarConexion, container.enviarSolicitud, container.descargarDocumento)
+                MisObrasViewModel(
+                    container.observarMiSolicitud,
+                    container.observarConexion,
+                    container.enviarSolicitud,
+                    container.descargarDocumento,
+                    container.descargarDocumentoObra
+                )
             }
         }
     }

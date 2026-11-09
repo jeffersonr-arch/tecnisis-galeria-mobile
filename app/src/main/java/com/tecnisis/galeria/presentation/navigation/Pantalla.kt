@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DonutLarge
 import androidx.compose.material.icons.outlined.Image
@@ -18,7 +19,8 @@ enum class Pantalla {
     Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente,
     Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion,
     Perfil, MisObras, RegistrarObra, SolicitudesObras, DetalleSolicitud, ObrasAsignadas, DetalleObraAsignada, Rechazos, PorTasar, Tasadas,
-    DashboardSolicitudes, ProyeccionEconomica
+    DashboardSolicitudes, ProyeccionEconomica,
+    ObrasRechazadas
 }
 
 /** Una tarjeta del inicio; si destino es null, la función llega en un sprint futuro. */
@@ -59,6 +61,7 @@ fun Rol.funciones(): List<FuncionRol> = when (this) {
         FuncionRol("Obras pendientes de tasación", null, "Llega en el Sprint 5 (HU10)", Icons.Outlined.Sell)
     )
     Rol.GERENTE -> listOf(
+        FuncionRol("Obras rechazadas", Pantalla.ObrasRechazadas, "Histórico con el motivo y su documento", Icons.Outlined.Block),
         FuncionRol("Dashboard de solicitudes", null, "Llega en el Sprint 6 (HU11)", Icons.Outlined.DonutLarge),
         FuncionRol("Proyección económica", null, "Llega en el Sprint 6 (HU12)", Icons.Outlined.BarChart)
     )

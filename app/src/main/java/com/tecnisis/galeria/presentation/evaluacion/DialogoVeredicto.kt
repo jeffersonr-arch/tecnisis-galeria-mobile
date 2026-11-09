@@ -22,6 +22,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 
 /**
  * HU08: confirmar el veredicto de una obra. Al rechazar el comentario es obligatorio; al aceptar, opcional.
@@ -87,6 +92,7 @@ fun DialogoVeredicto(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (rechazar) AvisoDocumento()
                 if (error != null) {
                     Text(error, style = MaterialTheme.typography.bodyMedium, color = c.error)
                 }
@@ -102,6 +108,37 @@ fun DialogoVeredicto(
         },
         dismissButton = { TextButton(onClick = onCancelar, enabled = !guardando) { Text("Cancelar") } }
     )
+}
+
+/** Sello "PDF" y el aviso de que se genera el documento por duplicado. */
+@Composable
+private fun AvisoDocumento() {
+    val c = MaterialTheme.colorScheme
+    Surface(color = c.surfaceVariant, shape = MaterialTheme.shapes.small) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(color = c.errorContainer, shape = MaterialTheme.shapes.extraSmall, modifier = Modifier.size(width = 30.dp, height = 34.dp)) {
+                Text(
+                    "PDF",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = c.onErrorContainer,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 9.dp)
+                )
+            }
+            Text(
+                "Al rechazar se genera el documento de rechazo por duplicado: copia del archivo y copia del artista.",
+                style = MaterialTheme.typography.bodySmall,
+                color = c.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Preview(name = "Aceptar · claro", showBackground = true)

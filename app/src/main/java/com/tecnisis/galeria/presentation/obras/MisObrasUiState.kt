@@ -11,7 +11,8 @@ data class MisObrasUiState(
     val enviando: Boolean = false,
     val mensaje: String? = null,
     val abriendoDocumento: Boolean = false,
-    val pdfParaAbrir: String? = null
+    val pdfParaAbrir: String? = null,
+    val abriendoObra: String? = null
 ) {
     val obras: List<Obra>
         get() = solicitud?.obras.orEmpty()

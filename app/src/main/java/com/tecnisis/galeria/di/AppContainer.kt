@@ -91,6 +91,12 @@ import com.tecnisis.galeria.domain.usecase.ObservarMiFichaExpertoUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarObraAsignadaUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarObrasAsignadasUseCase
 import com.tecnisis.galeria.domain.usecase.RegistrarVeredictoUseCase
+import com.tecnisis.galeria.data.repository.DocumentoObraRepositoryImpl
+import com.tecnisis.galeria.data.repository.HistoricoRechazosRepositoryImpl
+import com.tecnisis.galeria.domain.repository.DocumentoObraRepository
+import com.tecnisis.galeria.domain.repository.HistoricoRechazosRepository
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoObraUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarObrasRechazadasUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -149,6 +155,9 @@ interface AppContainer {
     val observarMiFichaExperto: ObservarMiFichaExpertoUseCase
     val registrarVeredicto: RegistrarVeredictoUseCase
     val etiquetarFoto: EtiquetarFotoUseCase
+    // Sprint 4 · HU09
+    val descargarDocumentoObra: DescargarDocumentoObraUseCase
+    val observarObrasRechazadas: ObservarObrasRechazadasUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -261,11 +270,18 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     private val avisosRepository: AvisosRepository by lazy { AvisosRepositoryImpl(auth, db, alcanceApp) }
     override val guardarToken by lazy { GuardarTokenUseCase(avisosRepository) }
     // HU08: evaluación del Especialista de Arte (Firestore + Cloud Function registrarVeredicto) y ML Kit en el celular
-    private val evaluacionRepository: EvaluacionRepository by lazy { EvaluacionRepositoryImpl(auth, db, functions) }
+    private val evaluacionRepository: EvaluacionRepository by lazy {
+        EvaluacionRepositoryImpl(contexto, auth, db, storage, functions, GeneradorPdf()) // HU09: + PDF de rechazo
+    }
     private val etiquetadoRepository: EtiquetadoRepository by lazy { EtiquetadoRepositoryImpl() }
     override val observarObrasAsignadas by lazy { ObservarObrasAsignadasUseCase(evaluacionRepository) }
     override val observarObraAsignada by lazy { ObservarObraAsignadaUseCase(evaluacionRepository) }
     override val observarMiFichaExperto by lazy { ObservarMiFichaExpertoUseCase(evaluacionRepository) }
     override val registrarVeredicto by lazy { RegistrarVeredictoUseCase(evaluacionRepository) }
     override val etiquetarFoto by lazy { EtiquetarFotoUseCase(etiquetadoRepository) }
+    // HU09: documento de rechazo de cada obra (Storage) e histórico de rechazadas del Gerente (Firestore)
+    private val documentoObraRepository: DocumentoObraRepository by lazy { DocumentoObraRepositoryImpl(contexto, storage) }
+    private val historicoRechazosRepository: HistoricoRechazosRepository by lazy { HistoricoRechazosRepositoryImpl(db) }
+    override val descargarDocumentoObra by lazy { DescargarDocumentoObraUseCase(documentoObraRepository) }
+    override val observarObrasRechazadas by lazy { ObservarObrasRechazadasUseCase(historicoRechazosRepository) }
 }
