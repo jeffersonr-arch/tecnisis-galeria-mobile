@@ -173,7 +173,8 @@ class RevisionRepositoryImpl(
         },
         recomendadoUid = getString("recomendadoUid"),
         expertoAsignadoUid = getString("expertoUid"), // Parte 2: lo escribe decidirSolicitud al aprobar
-        estado = EstadoObra.desdeValor(getString("estado")) // HU08: el Anfitrión ve el veredicto de cada obra
+        estado = EstadoObra.desdeValor(getString("estado")), // HU08: el Anfitrión ve el veredicto de cada obra
+        documentoRechazo = (get("documentoRechazo") as? List<*>).orEmpty().filterIsInstance<String>() // HU09
     )
 
     private fun DocumentSnapshot.aExperto() = PerfilEspecialista(
