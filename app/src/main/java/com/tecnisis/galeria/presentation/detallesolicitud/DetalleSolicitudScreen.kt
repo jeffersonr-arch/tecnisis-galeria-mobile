@@ -62,6 +62,7 @@ import com.tecnisis.galeria.presentation.componentes.Aviso
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
 import com.tecnisis.galeria.presentation.componentes.ChipColor
 import com.tecnisis.galeria.presentation.componentes.ChipEstadoObra
+import com.tecnisis.galeria.presentation.componentes.FilaPdf
 import com.tecnisis.galeria.presentation.componentes.FilaExperto
 import com.tecnisis.galeria.presentation.componentes.FotoRemota
 import com.tecnisis.galeria.presentation.componentes.TarjetaGaleria
@@ -108,7 +109,8 @@ fun DetalleSolicitudRoute(
         descargarFoto = viewModel::descargarFoto,
         onAprobar = viewModel::onAprobar,
         onRechazar = viewModel::onRechazar,
-        onAbrirDocumento = viewModel::onAbrirDocumento
+        onAbrirDocumento = viewModel::onAbrirDocumento,
+        onAbrirDocumentoObra = viewModel::onAbrirDocumentoObra
     )
 
     when (uiState.dialogo) {
@@ -161,7 +163,8 @@ fun DetalleSolicitudScreen(
     descargarFoto: suspend (String) -> ByteArray?,
     onAprobar: () -> Unit = {},
     onRechazar: () -> Unit = {},
-    onAbrirDocumento: (CopiaDocumento) -> Unit = {}
+    onAbrirDocumento: (CopiaDocumento) -> Unit = {},
+    onAbrirDocumentoObra: (String) -> Unit = {}
 ) {
     val c = MaterialTheme.colorScheme
     Scaffold(
@@ -207,7 +210,7 @@ fun DetalleSolicitudScreen(
                 item { EstadoDelAnalisis(uiState, onReintentar, onAbrirDocumento) }
                 item { TituloSeccion("Obras · ${solicitud.obras.size}", Modifier.padding(top = 4.dp)) }
                 items(solicitud.obras, key = { it.id }) { obra ->
-                    TarjetaObra(obra, uiState, descargarFoto, onCambiar = { onCambiar(obra.id) })
+                    TarjetaObra(obra, uiState, descargarFoto, onCambiar = { onCambiar(obra.id) }, onAbrirDocumentoObra = { onAbrirDocumentoObra(obra.id) })
                 }
             }
         }
@@ -321,7 +324,8 @@ private fun TarjetaObra(
     obra: ObraEnRevision,
     uiState: DetalleSolicitudUiState,
     descargarFoto: suspend (String) -> ByteArray?,
-    onCambiar: () -> Unit
+    onCambiar: () -> Unit,
+    onAbrirDocumentoObra: () -> Unit = {}
 ) {
     val c = MaterialTheme.colorScheme
     Surface(shape = MaterialTheme.shapes.large, color = c.surfaceContainerLowest, shadowElevation = 2.dp) {
@@ -340,6 +344,16 @@ private fun TarjetaObra(
                     }
                     // Ya resuelta, cada obra muestra su estado (en evaluación, aceptada, rechazada o no admitida)
                     if (!uiState.enRevision) ChipEstadoObra(obra.estado)
+                }
+                // Obra rechazada con documento → copia del archivo
+                if (obra.estado == EstadoObra.RECHAZADA && obra.documentoRechazo.isNotEmpty()) {
+                    FilaPdf(
+                        titulo = "Documento de rechazo",
+                        subtitulo = "Copia · Archivo de la galería",
+                        onClick = onAbrirDocumentoObra,
+                        cargando = uiState.abriendoObra == obra.id,
+                        fondo = c.surfaceVariant
+                    )
                 }
                 if (obra.nota.isNotBlank()) {
                     Column {
@@ -507,6 +521,23 @@ private fun DetalleAprobadaPreview() {
             estadoEjemplo(EstadoAnalisis.LISTO, estado = EstadoSolicitud.APROBADA),
             remember { SnackbarHostState() }, {}, {}, {}, { null }
         )
+    }
+}
+
+@Preview(name = "Aprobada con obra rechazada · claro", showBackground = true, heightDp = 1500)
+@Preview(name = "Aprobada con obra rechazada · nocturno", showBackground = true, heightDp = 1500, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DetalleObraRechazadaPreview() {
+    val base = estadoEjemplo(EstadoAnalisis.LISTO, estado = EstadoSolicitud.APROBADA)
+    val solicitud = base.solicitud ?: return
+    val conRechazo = solicitud.copy(obras = solicitud.obras.map { obra ->
+        if (obra.id == "2") obra.copy(
+            estado = EstadoObra.RECHAZADA,
+            documentoRechazo = listOf("documentos_obras/2/archivo.pdf", "documentos_obras/2/artista.pdf")
+        ) else obra
+    })
+    TecnisisGaleriaTheme {
+        DetalleSolicitudScreen(base.copy(solicitud = conRechazo), remember { SnackbarHostState() }, {}, {}, {}, { null })
     }
 }
 
