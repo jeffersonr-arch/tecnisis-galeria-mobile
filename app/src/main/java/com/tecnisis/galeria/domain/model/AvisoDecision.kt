@@ -26,7 +26,7 @@ fun avisoVeredicto(aceptada: Boolean, tituloObra: String): AvisoDecision {
     return if (aceptada) {
         AvisoDecision("$obra fue aceptada", "Pasó a la evaluación económica. Toca para ver tus obras.")
     } else {
-        AvisoDecision("$obra fue rechazada", "El Experto dejó un comentario. Toca para verlo.")
+        AvisoDecision("$obra fue rechazada", "Toca para ver el motivo y tu documento.")
     }
 }
 
