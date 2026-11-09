@@ -37,5 +37,32 @@ service firebase.storage {
         && request.resource.size < 2 * 1024 * 1024
         && request.resource.contentType == 'application/pdf';
     }
+
+    // HU09: documento de rechazo de cada obra en documentos_obras/{obraId}/archivo.pdf y artista.pdf.
+    // Solo consulta 2 documentos de Firestore (el límite): usuarios/{uid} y obras/{obraId}.
+    // Escribe el Especialista de la obra mientras sigue "en_evaluacion" (antes de registrar el veredicto).
+    // Leen el Anfitrión, el Gerente y el Especialista de la obra; el socio, solo artista.pdf de su obra rechazada.
+    match /documentos_obras/{obraId}/{archivo} {
+      function obra() {
+        return firestore.get(/databases/(default)/documents/obras/$(obraId)).data;
+      }
+      function rol() {
+        return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol;
+      }
+      allow read: if request.auth != null
+        && (rol() in ['anfitrion', 'gerente']
+            || obra().expertoUid == request.auth.uid
+            || (archivo == 'artista.pdf'
+                && obra().uid == request.auth.uid
+                && obra().estado == 'rechazada'));
+      allow write: if request.auth != null
+        && archivo in ['archivo.pdf', 'artista.pdf']
+        && obra().expertoUid == request.auth.uid
+        && obra().estado == 'en_evaluacion'
+        && request.resource != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
+
   }
 }
