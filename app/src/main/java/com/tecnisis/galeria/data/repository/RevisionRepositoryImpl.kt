@@ -14,6 +14,7 @@ import com.tecnisis.galeria.data.remote.PedidoAnalisisDto
 import com.tecnisis.galeria.domain.model.CandidatoExperto
 import com.tecnisis.galeria.domain.model.EstadoAnalisis
 import com.tecnisis.galeria.domain.model.EstadoEspecialista
+import com.tecnisis.galeria.domain.model.EstadoObra
 import com.tecnisis.galeria.domain.model.EstadoSolicitud
 import com.tecnisis.galeria.domain.model.PerfilEspecialista
 import com.tecnisis.galeria.domain.model.ObraEnRevision
@@ -171,7 +172,9 @@ class RevisionRepositoryImpl(
             CandidatoExperto(uid, (mapa["afinidad"] as? Number)?.toInt() ?: 0)
         },
         recomendadoUid = getString("recomendadoUid"),
-        expertoAsignadoUid = getString("expertoUid") // Parte 2: lo escribe decidirSolicitud al aprobar
+        expertoAsignadoUid = getString("expertoUid"), // Parte 2: lo escribe decidirSolicitud al aprobar
+        estado = EstadoObra.desdeValor(getString("estado")), // HU08: el Anfitrión ve el veredicto de cada obra
+        documentoRechazo = (get("documentoRechazo") as? List<*>).orEmpty().filterIsInstance<String>() // HU09
     )
 
     private fun DocumentSnapshot.aExperto() = PerfilEspecialista(

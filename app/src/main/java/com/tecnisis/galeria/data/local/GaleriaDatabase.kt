@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** Base de datos SQLite de la app (archivo galeria.db). Versión 1: socio (HU05). Versión 2: + solicitud y obra (HU06). */
 @Database(
     entities = [SocioEntity::class, SolicitudEntity::class, ObraEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class GaleriaDatabase : RoomDatabase() {
@@ -49,6 +49,13 @@ abstract class GaleriaDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `solicitud` ADD COLUMN `resueltaEn` INTEGER")
             }
         }
+
+        /** HU08: una columna nueva en obra. Las filas que ya existen quedan con NULL (sin comentario). */
+        val MIGRACION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `obra` ADD COLUMN `comentarioVeredicto` TEXT")
+            }
+        }
         /** Una sola instancia para toda la app (abrir la base de datos es costoso). */
         fun obtener(contexto: Context): GaleriaDatabase =
             instancia ?: synchronized(this) {
@@ -57,7 +64,7 @@ abstract class GaleriaDatabase : RoomDatabase() {
                     GaleriaDatabase::class.java,
                     "galeria.db"
                 )
-                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
+                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
                     .build()
                     .also { instancia = it }
             }

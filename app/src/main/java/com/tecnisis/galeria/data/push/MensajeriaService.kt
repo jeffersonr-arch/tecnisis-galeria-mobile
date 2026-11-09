@@ -15,12 +15,16 @@ import com.google.firebase.messaging.RemoteMessage
 import com.tecnisis.galeria.GaleriaApplication
 import com.tecnisis.galeria.MainActivity
 import com.tecnisis.galeria.R
+import com.tecnisis.galeria.domain.model.AvisoDecision
 import com.tecnisis.galeria.domain.model.EXTRA_ABRIR_MIS_OBRAS
 import com.tecnisis.galeria.domain.model.avisoDecision
+import com.tecnisis.galeria.domain.model.avisoVeredicto
+import com.tecnisis.galeria.domain.model.idAvisoVeredicto
 
 /**
  * HU07: recibe los mensajes de Firebase Cloud Messaging. La Cloud Function manda un mensaje de "datos"
  * (no de notificación): así este código corre siempre, con la app abierta o cerrada.
+ * HU08: también llega "veredicto" (una obra aceptada o rechazada), con una notificación por obra.
  */
 class MensajeriaService : FirebaseMessagingService() {
 
@@ -30,14 +34,26 @@ class MensajeriaService : FirebaseMessagingService() {
 
     override fun onMessageReceived(mensaje: RemoteMessage) {
         val datos = mensaje.data
-        if (datos["tipo"] != "decision") return
-        // 1) Baja la decisión a Room con WorkManager, aunque el socio haya negado las notificaciones
+        val aviso: AvisoDecision
+        val idNotificacion: Int
+        when (datos["tipo"]) {
+            "decision" -> {
+                aviso = avisoDecision(datos["estado"] == "aprobada", datos["cantidad"]?.toIntOrNull() ?: 0)
+                idNotificacion = ID_DECISION
+            }
+            "veredicto" -> {
+                aviso = avisoVeredicto(datos["estado"] == "aceptada", datos["titulo"].orEmpty())
+                idNotificacion = idAvisoVeredicto(datos["obraId"].orEmpty()) // uno por obra: no se reemplazan
+            }
+            else -> return
+        }
+        // 1) Baja la decisión o el veredicto a Room con WorkManager, aunque el socio haya negado las notificaciones
         (application as GaleriaApplication).container.programarSeguimiento()
         // 2) Muestra el aviso (si el socio dio el permiso)
-        mostrarAviso(aprobada = datos["estado"] == "aprobada", cantidad = datos["cantidad"]?.toIntOrNull() ?: 0)
+        mostrarAviso(aviso, idNotificacion)
     }
 
-    private fun mostrarAviso(aprobada: Boolean, cantidad: Int) {
+    private fun mostrarAviso(aviso: AvisoDecision, idNotificacion: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val canal = NotificationChannel(CANAL, "Solicitudes de exhibición", NotificationManager.IMPORTANCE_HIGH)
             getSystemService(NotificationManager::class.java).createNotificationChannel(canal)
@@ -56,7 +72,6 @@ class MensajeriaService : FirebaseMessagingService() {
         val alTocar = PendingIntent.getActivity(
             this, 0, abrir, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val aviso = avisoDecision(aprobada, cantidad)
         val notificacion = NotificationCompat.Builder(this, CANAL)
             .setSmallIcon(R.drawable.logo_tecnisis)
             .setContentTitle(aviso.titulo)
@@ -66,7 +81,7 @@ class MensajeriaService : FirebaseMessagingService() {
             .setContentIntent(alTocar)
             .setAutoCancel(true)
             .build()
-        NotificationManagerCompat.from(this).notify(ID_DECISION, notificacion)
+        NotificationManagerCompat.from(this).notify(idNotificacion, notificacion)
     }
 
     private companion object {

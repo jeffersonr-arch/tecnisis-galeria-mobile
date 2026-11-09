@@ -85,4 +85,5 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.mlkit.image.labeling) // HU08: etiquetas de la foto en el celular (modelo incluido)
 }

@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DonutLarge
 import androidx.compose.material.icons.outlined.Image
@@ -17,8 +18,9 @@ enum class Pantalla {
     Login, Registro,
     Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente,
     Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion,
-    Perfil, MisObras, RegistrarObra, SolicitudesObras, DetalleSolicitud, ObrasAsignadas, Rechazos, PorTasar, Tasadas,
-    DashboardSolicitudes, ProyeccionEconomica
+    Perfil, MisObras, RegistrarObra, SolicitudesObras, DetalleSolicitud, ObrasAsignadas, DetalleObraAsignada, Rechazos, PorTasar, Tasadas,
+    DashboardSolicitudes, ProyeccionEconomica,
+    ObrasRechazadas
 }
 
 /** Una tarjeta del inicio; si destino es null, la función llega en un sprint futuro. */
@@ -53,14 +55,13 @@ fun Rol.funciones(): List<FuncionRol> = when (this) {
         FuncionRol("Aprobar solicitudes de exhibición", Pantalla.SolicitudesObras, "Revisa las obras y el Experto recomendado", Icons.Outlined.Description)
     )
     Rol.ESPECIALISTA_ARTE -> listOf(
-        FuncionRol("Obras asignadas para evaluar", null, "Llega en el Sprint 4 (HU08)",
-            Icons.AutoMirrored.Outlined.FactCheck
-        )
+        FuncionRol("Obras asignadas para evaluar", Pantalla.ObrasAsignadas, "Revisa cada obra y registra tu veredicto",Icons.AutoMirrored.Outlined.FactCheck)
     )
     Rol.ESPECIALISTA_VENTAS -> listOf(
         FuncionRol("Obras pendientes de tasación", null, "Llega en el Sprint 5 (HU10)", Icons.Outlined.Sell)
     )
     Rol.GERENTE -> listOf(
+        FuncionRol("Obras rechazadas", Pantalla.ObrasRechazadas, "Histórico con el motivo y su documento", Icons.Outlined.Block),
         FuncionRol("Dashboard de solicitudes", null, "Llega en el Sprint 6 (HU11)", Icons.Outlined.DonutLarge),
         FuncionRol("Proyección económica", null, "Llega en el Sprint 6 (HU12)", Icons.Outlined.BarChart)
     )

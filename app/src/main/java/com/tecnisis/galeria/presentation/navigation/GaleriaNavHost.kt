@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tecnisis.galeria.domain.model.Rol
+import com.tecnisis.galeria.presentation.asignadas.ObrasAsignadasRoute
 import com.tecnisis.galeria.presentation.bandeja.BandejaRoute
 import com.tecnisis.galeria.presentation.componentes.BarraInferior
 import com.tecnisis.galeria.presentation.componentes.OpcionBarra
@@ -29,6 +30,8 @@ import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudRoute
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
+import com.tecnisis.galeria.presentation.evaluacion.DetalleObraAsignadaRoute
+import com.tecnisis.galeria.presentation.evaluacion.DetalleObraAsignadaViewModel
 import com.tecnisis.galeria.presentation.inicio.InicioRolRoute
 import com.tecnisis.galeria.presentation.login.LoginRoute
 import com.tecnisis.galeria.presentation.obras.MisObrasRoute
@@ -37,6 +40,7 @@ import com.tecnisis.galeria.presentation.obras.RegistrarObraViewModel
 import com.tecnisis.galeria.presentation.perfil.PerfilRoute
 import com.tecnisis.galeria.presentation.postulacion.PostulacionRoute
 import com.tecnisis.galeria.presentation.registro.RegistroRoute
+import com.tecnisis.galeria.presentation.rechazadas.ObrasRechazadasRoute
 import com.tecnisis.galeria.presentation.solicitudes.SolicitudesRoute
 
 @Composable
@@ -207,6 +211,23 @@ fun GaleriaNavHost(
                 )
             ) {
                 DetalleSolicitudRoute(onVolver = volver)
+            }
+            composable(Pantalla.ObrasAsignadas.name) {
+                ObrasAsignadasRoute(
+                    onAbrir = { id -> navController.navigate("${Pantalla.DetalleObraAsignada.name}/$id") }
+                )
+            }
+            composable(
+                route = "${Pantalla.DetalleObraAsignada.name}/{${DetalleObraAsignadaViewModel.ARG_ID}}",
+                arguments = listOf(
+                    navArgument(DetalleObraAsignadaViewModel.ARG_ID) { type = NavType.StringType }
+                )
+            ) {
+                DetalleObraAsignadaRoute(onVolver = volver)
+            }
+            // Histórico de obras rechazadas del Gerente
+            composable(Pantalla.ObrasRechazadas.name) {
+                ObrasRechazadasRoute(onVolver = volver)
             }
         }
     }

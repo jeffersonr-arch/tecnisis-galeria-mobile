@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoObraUseCase
 
 class DetalleSolicitudViewModel(
     private val id: String,
@@ -39,7 +40,8 @@ class DetalleSolicitudViewModel(
     private val descargarFotoObra: DescargarFotoObraUseCase,
     private val aprobarSolicitud: AprobarSolicitudUseCase,
     private val rechazarSolicitud: RechazarSolicitudUseCase,
-    private val descargarDocumento: DescargarDocumentoUseCase
+    private val descargarDocumento: DescargarDocumentoUseCase,
+    private val descargarDocumentoObra: DescargarDocumentoObraUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetalleSolicitudUiState())
@@ -183,6 +185,18 @@ class DetalleSolicitudViewModel(
         }
     }
 
+    /** El Anfitrión abre la copia del archivo del documento de rechazo de una obra. */
+    fun onAbrirDocumentoObra(obraId: String) {
+        if (_uiState.value.abriendoObra != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(abriendoObra = obraId) }
+            descargarDocumentoObra(obraId, CopiaDocumento.ARCHIVO)
+                .onSuccess { ruta -> _uiState.update { it.copy(pdfParaAbrir = ruta) } }
+                .onFailure { e -> _uiState.update { it.copy(aviso = mensajeDecision(e)) } }
+            _uiState.update { it.copy(abriendoObra = null) }
+        }
+    }
+
     /** La Route ya abrió el PDF (o avisó que no hay app de PDF). */
     fun onPdfAbierto(abierto: Boolean) = _uiState.update {
         it.copy(pdfParaAbrir = null, aviso = if (abierto) it.aviso else "Instala una app para ver PDF (por ejemplo, Google Drive)")
@@ -230,7 +244,8 @@ class DetalleSolicitudViewModel(
                     container.descargarFotoObra,
                     container.aprobarSolicitud,
                     container.rechazarSolicitud,
-                    container.descargarDocumento
+                    container.descargarDocumento,
+                    container.descargarDocumentoObra
                 )
             }
         }

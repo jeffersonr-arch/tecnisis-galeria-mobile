@@ -12,6 +12,13 @@ service cloud.firestore {
       return autenticado() &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'anfitrion';
     }
+
+    // HU09
+    function esGerente() {
+      return autenticado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'gerente';
+    }
+
     // HU06
     function esSocioActivo() {
       return autenticado() &&
@@ -78,9 +85,14 @@ service cloud.firestore {
         && request.resource.data.cantidadObras <= 10;
       allow update, delete: if false;
     }
+    // HU08: el Especialista de Arte lee las obras que tienen su uid en expertoUid.
+    // Su consulta debe llevar whereEqualTo("expertoUid", uid): si no, Firestore la rechaza.
+    // HU09: el Gerente lee solo las rechazadas; su consulta debe llevar whereEqualTo("estado", "rechazada").
     match /obras/{id} {
       allow read: if autenticado()
-        && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion());
+        && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion()
+            || resource.data.expertoUid == request.auth.uid
+            || (resource.data.estado == 'rechazada' && esGerente()));
       allow create: if esSocioActivo()
         && request.resource.data.id == id
         && request.resource.data.uid == request.auth.uid

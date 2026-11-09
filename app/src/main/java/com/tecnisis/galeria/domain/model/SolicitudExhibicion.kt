@@ -19,6 +19,25 @@ data class SolicitudExhibicion(
     val esEditable: Boolean
         get() = estado == EstadoSolicitud.BORRADOR
 
+    /** HU08: obras que ya tienen veredicto del Especialista de Arte. */
+    val cantidadEvaluadas: Int
+        get() = obras.count { it.estado.tieneVeredicto }
+
+    /** HU08: aceptadas (también las que ya pasaron a "Lista para exhibición"). */
+    val cantidadAceptadas: Int
+        get() = obras.count { it.estado == EstadoObra.ACEPTADA || it.estado == EstadoObra.LISTA_EXHIBICION }
+
+    val cantidadRechazadas: Int
+        get() = obras.count { it.estado == EstadoObra.RECHAZADA }
+
+    /**
+     * HU08: la evaluación artística terminó cuando la solicitud está aprobada y ninguna obra sigue "en_evaluacion".
+     * La solicitud no cambia de estado: esto se calcula con sus obras.
+     */
+    val evaluacionTerminada: Boolean
+        get() = estado == EstadoSolicitud.APROBADA && obras.isNotEmpty() &&
+                obras.none { it.estado == EstadoObra.EN_EVALUACION }
+
     /** Sí en un borrador con menos de 10 obras, o si esta ya se cerró (se arma una nueva). */
     val admiteNuevaObra: Boolean
         get() = if (estado.estaAbierta) esEditable && obras.size < MAX_OBRAS_POR_SOLICITUD else true
