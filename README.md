@@ -69,8 +69,27 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - Reglas de Storage: el socio solo descarga su copia y solo cuando la solicitud ya está resuelta
 - Pruebas unitarias de la decisión, del documento y del aviso
 
+## Sprint 4 — Evaluación artística
+
+### HU08: Revisión física y veredicto (ML Kit)
+- Pestaña Asignadas del Especialista de Arte en tiempo real (Por evaluar y Evaluadas) con su carga de trabajo
+- Detalle de la obra con foto, datos, descripción IA y socio (solo nombre y número)
+- Google ML Kit Image Labeling en el celular (modelo incluido): hasta 5 etiquetas con 50 % o más, traducidas al español
+- Veredicto Aceptada o Rechazada (comentario obligatorio al rechazar), definitivo, con la Cloud Function `registrarVeredicto`
+- Notificación al socio por obra (FCM) y veredicto en Mis obras (Room versión 4); el Anfitrión ve el estado de cada obra
+- Pruebas unitarias del veredicto, las etiquetas y las listas
+
+### HU09: Documento de rechazo de obra
+- Al rechazar, el celular del Especialista genera el documento por duplicado con PdfDocument (copia del archivo de la galería y copia del artista) y lo sube a Firebase Storage antes de guardar el veredicto
+- `registrarVeredicto` revisa que existan los 2 PDF y guarda sus rutas en la obra (`documentoRechazo`) y el nombre del Especialista
+- El documento se abre desde el detalle del Especialista, Mis obras del socio (su copia), el detalle del Anfitrión y el histórico del Gerente
+- Histórico de obras rechazadas del Gerente en tiempo real, con socio, Especialista, fecha, motivo y documento
+- Reglas de Storage con `firestore.get()`: escribe el Especialista de la obra; leen el Anfitrión, el Gerente y el Especialista; el socio solo su copia
+- Pruebas unitarias del documento y del histórico
+
+
 ## Tecnologías
-Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument
+Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument, Google ML Kit Image Labeling
 
 ## Cómo ejecutar
 1. Clonar el repositorio y abrirlo en Android Studio.
