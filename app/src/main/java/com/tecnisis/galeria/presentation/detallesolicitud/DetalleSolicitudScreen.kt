@@ -49,6 +49,7 @@ import com.tecnisis.galeria.domain.model.CandidatoExperto
 import com.tecnisis.galeria.domain.model.CopiaDocumento
 import com.tecnisis.galeria.domain.model.EstadoAnalisis
 import com.tecnisis.galeria.domain.model.EstadoEspecialista
+import com.tecnisis.galeria.domain.model.EstadoObra
 import com.tecnisis.galeria.domain.model.EstadoSolicitud
 import com.tecnisis.galeria.domain.model.MOTIVO_MAXIMO
 import com.tecnisis.galeria.domain.model.PerfilEspecialista
@@ -60,6 +61,7 @@ import com.tecnisis.galeria.presentation.componentes.abrirPdf
 import com.tecnisis.galeria.presentation.componentes.Aviso
 import com.tecnisis.galeria.presentation.componentes.BarraConVolver
 import com.tecnisis.galeria.presentation.componentes.ChipColor
+import com.tecnisis.galeria.presentation.componentes.ChipEstadoObra
 import com.tecnisis.galeria.presentation.componentes.FilaExperto
 import com.tecnisis.galeria.presentation.componentes.FotoRemota
 import com.tecnisis.galeria.presentation.componentes.TarjetaGaleria
@@ -331,9 +333,13 @@ private fun TarjetaObra(
                     .height(170.dp)
             )
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column {
-                    Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
-                    Text("${obra.tecnica.etiqueta} · ${medidas(obra)}", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
+                        Text("${obra.tecnica.etiqueta} · ${medidas(obra)}", style = MaterialTheme.typography.bodySmall, color = c.onSurfaceVariant)
+                    }
+                    // Ya resuelta, cada obra muestra su estado (en evaluación, aceptada, rechazada o no admitida)
+                    if (!uiState.enRevision) ChipEstadoObra(obra.estado)
                 }
                 if (obra.nota.isNotBlank()) {
                     Column {
@@ -424,6 +430,13 @@ private val expertosEjemplo = listOf(
     PerfilEspecialista("j", "Jorge Huamán Ccori", setOf(Tecnica.TEXTIL, Tecnica.CERAMICA), EstadoEspecialista.ACTIVO, 1)
 )
 
+/** En la vista previa, aprobada = el veredicto que se indica; rechazada = no admitida. */
+private fun estadoObraEjemplo(solicitud: EstadoSolicitud, siAprobada: EstadoObra): EstadoObra = when (solicitud) {
+    EstadoSolicitud.APROBADA -> siAprobada
+    EstadoSolicitud.RECHAZADA -> EstadoObra.NO_ADMITIDA
+    else -> EstadoObra.ENVIADA
+}
+
 private fun estadoEjemplo(analisis: EstadoAnalisis, sinExpertoTextil: Boolean = false, estado: EstadoSolicitud = EstadoSolicitud.ENVIADA): DetalleSolicitudUiState {
     val aprobada = estado == EstadoSolicitud.APROBADA
     val obras = listOf(
@@ -431,12 +444,14 @@ private fun estadoEjemplo(analisis: EstadoAnalisis, sinExpertoTextil: Boolean = 
             "1", "Mañana en Paracas", Tecnica.OLEO, 60.0, 80.0, null,
             "Pinté la bahía al amanecer, cuando los botes todavía no salen.", "",
             if (analisis == EstadoAnalisis.LISTO) "Paisaje marino al óleo: una bahía en calma con luz de amanecer, en azules intensos y ocres cálidos." else null,
-            listOf(CandidatoExperto("c", 87)), "c", expertoAsignadoUid = if (aprobada) "c" else null
+            listOf(CandidatoExperto("c", 87)), "c", expertoAsignadoUid = if (aprobada) "c" else null,
+            estado = estadoObraEjemplo(estado, EstadoObra.ACEPTADA)
         ),
         ObraEnRevision(
             "2", "Telar de Ocongate", Tecnica.TEXTIL, 120.0, 90.0, null, "", "",
             if (analisis == EstadoAnalisis.LISTO) "Tejido de lana con rombos geométricos en rojo, verde y amarillo sobre fondo oscuro." else null,
-            listOf(CandidatoExperto("j", 91)), if (sinExpertoTextil) null else "j", expertoAsignadoUid = if (aprobada) "j" else null
+            listOf(CandidatoExperto("j", 91)), if (sinExpertoTextil) null else "j", expertoAsignadoUid = if (aprobada) "j" else null,
+            estado = estadoObraEjemplo(estado, EstadoObra.EN_EVALUACION)
         )
     )
     val solicitud = SolicitudEnRevision(

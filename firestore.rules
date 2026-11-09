@@ -78,9 +78,12 @@ service cloud.firestore {
         && request.resource.data.cantidadObras <= 10;
       allow update, delete: if false;
     }
+    // HU08: el Especialista de Arte lee las obras que tienen su uid en expertoUid.
+    // Su consulta debe llevar whereEqualTo("expertoUid", uid): si no, Firestore la rechaza.
     match /obras/{id} {
       allow read: if autenticado()
-        && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion());
+        && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion()
+            || resource.data.expertoUid == request.auth.uid);
       allow create: if esSocioActivo()
         && request.resource.data.id == id
         && request.resource.data.uid == request.auth.uid

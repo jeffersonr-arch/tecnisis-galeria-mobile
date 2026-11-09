@@ -13,7 +13,8 @@ data class Obra(
     val fotoUrl: String?,    // null hasta que WorkManager la sube a Storage
     val nota: String,        // concepto o inspiración; puede estar vacía
     val estado: EstadoObra,
-    val creadaEn: Long
+    val creadaEn: Long,
+    val comentarioVeredicto: String? = null // HU08: lo que escribió el Especialista de Arte (null si no hay)
 ) {
     val fotoSubida: Boolean
         get() = fotoUrl != null

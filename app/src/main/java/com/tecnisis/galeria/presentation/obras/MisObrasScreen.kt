@@ -367,12 +367,26 @@ private fun pasosResuelta(s: SolicitudExhibicion): List<PasoAvance> {
     return if (s.estado == EstadoSolicitud.APROBADA) listOf(
         enviada,
         PasoAvance("Asignación de expertos", "Aprobada$fecha", EstadoPaso.COMPLETO),
-        PasoAvance("Evaluación artística", "Tus obras están con los Expertos", EstadoPaso.ACTUAL)
+        pasoEvaluacion(s)
     ) else listOf(
         enviada,
         PasoAvance("Revisión del Anfitrión", "Rechazada$fecha", EstadoPaso.COMPLETO)
     )
 }
+
+/** En curso mientras alguna obra siga "en evaluación"; completo cuando todas tienen veredicto. */
+private fun pasoEvaluacion(s: SolicitudExhibicion): PasoAvance = when {
+    s.evaluacionTerminada -> PasoAvance(
+        "Evaluación artística",
+        "Terminada · ${cantidadTexto(s.cantidadAceptadas, "aceptada", "aceptadas")}, " +
+                cantidadTexto(s.cantidadRechazadas, "rechazada", "rechazadas"),
+        EstadoPaso.COMPLETO
+    )
+    s.cantidadEvaluadas == 0 -> PasoAvance("Evaluación artística", "Tus obras están con los Expertos", EstadoPaso.ACTUAL)
+    else -> PasoAvance("Evaluación artística", "${s.cantidadEvaluadas} de ${s.obras.size} obras evaluadas", EstadoPaso.ACTUAL)
+}
+
+private fun cantidadTexto(n: Int, singular: String, plural: String) = "$n ${if (n == 1) singular else plural}"
 
 @Composable
 private fun AvisoEnvio(hayConexion: Boolean) {
@@ -421,30 +435,50 @@ private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: 
         border = BorderStroke(1.dp, c.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            FotoObra(obra.fotoLocal, Modifier.size(72.dp), ladoMaximo = 240)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "${obra.tecnica.etiqueta} · ${medidasDe(obra)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = c.onSurfaceVariant
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val (texto, fondo, color) = chipDeObra(obra, estadoSolicitud)
-                    ChipTexto(texto, fondo, color)
-                    if (obra.nota.isNotBlank()) {
-                        Spacer(Modifier.width(10.dp))
-                        Icon(Icons.Outlined.Mic, contentDescription = null, tint = c.onSurfaceVariant, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(3.dp))
-                        Text("Nota", style = MaterialTheme.typography.labelMedium, color = c.onSurfaceVariant)
+        Column {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                FotoObra(obra.fotoLocal, Modifier.size(72.dp), ladoMaximo = 240)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(obra.titulo, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "${obra.tecnica.etiqueta} · ${medidasDe(obra)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val (texto, fondo, color) = chipDeObra(obra, estadoSolicitud)
+                        ChipTexto(texto, fondo, color)
+                        if (obra.nota.isNotBlank()) {
+                            Spacer(Modifier.width(10.dp))
+                            Icon(Icons.Outlined.Mic, contentDescription = null, tint = c.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text("Nota", style = MaterialTheme.typography.labelMedium, color = c.onSurfaceVariant)
+                        }
                     }
                 }
+                if (editable) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Editar", tint = c.outline)
+                }
             }
-            if (editable) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Editar", tint = c.outline)
+            // El comentario del Especialista (sin su nombre). Si no escribió nada, no aparece nada
+            val comentario = obra.comentarioVeredicto
+            if (obra.estado.tieneVeredicto && !comentario.isNullOrBlank()) {
+                val aceptada = obra.estado != EstadoObra.RECHAZADA
+                val color = if (aceptada) c.onTertiaryContainer else c.onErrorContainer
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (aceptada) c.tertiaryContainer else c.errorContainer)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text("COMENTARIO DEL EXPERTO", style = MaterialTheme.typography.labelSmall, color = color)
+                    Spacer(Modifier.height(3.dp))
+                    Text(comentario, style = MaterialTheme.typography.bodyMedium, color = color)
+                }
             }
         }
     }
@@ -536,11 +570,22 @@ internal fun medidasDe(obra: Obra): String =
 private fun obraEjemplo(
     id: String, titulo: String, tecnica: Tecnica, alto: Double, ancho: Double,
     profundidad: Double? = null, nota: String = "", subida: Boolean = false,
-    estado: EstadoObra = EstadoObra.BORRADOR
+    estado: EstadoObra = EstadoObra.BORRADOR, comentario: String? = null
 ) = Obra(
     id = id, solicitudId = "s1", titulo = titulo, tecnica = tecnica, altoCm = alto, anchoCm = ancho,
     profundidadCm = profundidad, fotoLocal = "", fotoUrl = if (subida) "https://ejemplo" else null,
-    nota = nota, estado = estado, creadaEn = 0L
+    nota = nota, estado = estado, creadaEn = 0L, comentarioVeredicto = comentario
+)
+
+private fun solicitudEvaluada(terminada: Boolean) = solicitudEjemplo(EstadoSolicitud.APROBADA).copy(
+    obras = listOf(
+        obraEjemplo("1", "Mañana en Paracas", Tecnica.OLEO, 60.0, 80.0, subida = true, estado = EstadoObra.ACEPTADA,
+            comentario = "Buena técnica y buen manejo de la luz. Cuidar el marco para la exhibición."),
+        obraEjemplo("2", "Telar de Ocongate", Tecnica.TEXTIL, 120.0, 90.0, estado = EstadoObra.RECHAZADA,
+            comentario = "Los bordes del tejido están deshilachados; no está en condiciones de exhibirse."),
+        obraEjemplo("3", "Vasija nocturna", Tecnica.CERAMICA, 35.0, 22.0, 22.0,
+            estado = if (terminada) EstadoObra.ACEPTADA else EstadoObra.EN_EVALUACION)
+    )
 )
 
 private fun solicitudEjemplo(estado: EstadoSolicitud): SolicitudExhibicion {
@@ -612,3 +657,14 @@ private fun MisObrasAprobadaPreview() =
 @Composable
 private fun MisObrasRechazadaPreview() =
     VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEjemplo(EstadoSolicitud.RECHAZADA)))
+
+@Preview(name = "Evaluación en curso · claro", showBackground = true, heightDp = 1150)
+@Preview(name = "Evaluación en curso · nocturno", showBackground = true, heightDp = 1150, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun MisObrasEvaluacionPreview() =
+    VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEvaluada(terminada = false)))
+
+@Preview(name = "Evaluación terminada", showBackground = true, heightDp = 1150)
+@Composable
+private fun MisObrasEvaluadaPreview() =
+    VistaPrevia(MisObrasUiState(cargando = false, solicitud = solicitudEvaluada(terminada = true)))

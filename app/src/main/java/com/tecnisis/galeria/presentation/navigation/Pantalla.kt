@@ -17,7 +17,7 @@ enum class Pantalla {
     Login, Registro,
     Postulante, SocioActivo, Anfitrion, EspecialistaArte, EspecialistaVentas, Gerente,
     Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion,
-    Perfil, MisObras, RegistrarObra, SolicitudesObras, DetalleSolicitud, ObrasAsignadas, Rechazos, PorTasar, Tasadas,
+    Perfil, MisObras, RegistrarObra, SolicitudesObras, DetalleSolicitud, ObrasAsignadas, DetalleObraAsignada, Rechazos, PorTasar, Tasadas,
     DashboardSolicitudes, ProyeccionEconomica
 }
 
@@ -53,9 +53,7 @@ fun Rol.funciones(): List<FuncionRol> = when (this) {
         FuncionRol("Aprobar solicitudes de exhibición", Pantalla.SolicitudesObras, "Revisa las obras y el Experto recomendado", Icons.Outlined.Description)
     )
     Rol.ESPECIALISTA_ARTE -> listOf(
-        FuncionRol("Obras asignadas para evaluar", null, "Llega en el Sprint 4 (HU08)",
-            Icons.AutoMirrored.Outlined.FactCheck
-        )
+        FuncionRol("Obras asignadas para evaluar", Pantalla.ObrasAsignadas, "Revisa cada obra y registra tu veredicto",Icons.AutoMirrored.Outlined.FactCheck)
     )
     Rol.ESPECIALISTA_VENTAS -> listOf(
         FuncionRol("Obras pendientes de tasación", null, "Llega en el Sprint 5 (HU10)", Icons.Outlined.Sell)
