@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.tecnisis.galeria.domain.model.CopiaDocumento
+import com.tecnisis.galeria.domain.model.DecisionError
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoObraUseCase
 
 /** HU08: el detalle de una obra asignada, las etiquetas de ML Kit y el veredicto del Especialista. */
 class DetalleObraAsignadaViewModel(
@@ -33,7 +36,8 @@ class DetalleObraAsignadaViewModel(
     private val observarMiFicha: ObservarMiFichaExpertoUseCase,
     private val descargarFotoObra: DescargarFotoObraUseCase,
     private val etiquetarFoto: EtiquetarFotoUseCase,
-    private val registrarVeredicto: RegistrarVeredictoUseCase
+    private val registrarVeredicto: RegistrarVeredictoUseCase,
+    private val descargarDocumentoObra: DescargarDocumentoObraUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetalleObraAsignadaUiState())
@@ -135,6 +139,30 @@ class DetalleObraAsignadaViewModel(
 
     fun onAvisoMostrado() = _uiState.update { it.copy(aviso = null) }
 
+    /** El Especialista abre la copia del archivo de la galería. */
+    fun onVerDocumento() {
+        if (_uiState.value.abriendoDocumento) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(abriendoDocumento = true) }
+            descargarDocumentoObra(id, CopiaDocumento.ARCHIVO)
+                .onSuccess { ruta -> _uiState.update { it.copy(pdfParaAbrir = ruta) } }
+                .onFailure { e -> _uiState.update { it.copy(aviso = mensajeDocumento(e)) } }
+            _uiState.update { it.copy(abriendoDocumento = false) }
+        }
+    }
+
+    /** La Route ya abrió el PDF (o avisó que no hay app de PDF). */
+    fun onPdfAbierto(abierto: Boolean) = _uiState.update {
+        it.copy(pdfParaAbrir = null, aviso = if (abierto) it.aviso else "Instala una app para ver PDF (por ejemplo, Google Drive)")
+    }
+
+    private fun mensajeDocumento(e: Throwable): String = when (e) {
+        DecisionError.SinConexion -> "Necesitas internet para abrir el documento"
+        DecisionError.NoEncontrada -> "Esta obra se rechazó antes de que existiera el documento"
+        DecisionError.SinPermiso -> "Tu cuenta no puede abrir este documento"
+        else -> "No se pudo abrir el documento. Inténtalo de nuevo"
+    }
+
     private fun mensajeVeredicto(e: Throwable): String = when (e) {
         EvaluacionError.ComentarioInvalido -> "Escribe el motivo del rechazo (hasta 500 caracteres)"
         EvaluacionError.SinConexion -> "Necesitas internet para registrar el veredicto. No se guardó nada."
@@ -142,6 +170,8 @@ class DetalleObraAsignadaViewModel(
         EvaluacionError.NoAsignada -> "Esta obra ya no está asignada a ti"
         EvaluacionError.YaEvaluada -> "Esta obra ya tiene veredicto"
         EvaluacionError.NoEncontrada -> "La obra ya no existe"
+        EvaluacionError.PdfNoGenerado -> "No se pudo generar el documento de rechazo. No se guardó nada."
+        EvaluacionError.FaltanDocumentos -> "No se pudo subir el documento de rechazo. No se guardó nada; inténtalo de nuevo."
         is EvaluacionError.Servidor -> "No se pudo guardar el veredicto (${e.detalle})"
         else -> "No se pudo guardar el veredicto. Inténtalo de nuevo"
     }
@@ -167,7 +197,8 @@ class DetalleObraAsignadaViewModel(
                     container.observarMiFichaExperto,
                     container.descargarFotoObra,
                     container.etiquetarFoto,
-                    container.registrarVeredicto
+                    container.registrarVeredicto,
+                    container.descargarDocumentoObra
                 )
             }
         }

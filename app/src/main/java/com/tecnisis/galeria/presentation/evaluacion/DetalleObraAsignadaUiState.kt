@@ -25,7 +25,9 @@ data class DetalleObraAsignadaUiState(
     val mostrarErrorComentario: Boolean = false,
     val guardando: Boolean = false,
     val errorDialogo: String? = null,
-    val aviso: String? = null
+    val aviso: String? = null,
+    val abriendoDocumento: Boolean = false,
+    val pdfParaAbrir: String? = null
 ) {
     /** Solo se evalúa una obra "en_evaluacion"; cuando llega el veredicto por Firestore, los botones desaparecen. */
     val puedeEvaluar: Boolean
