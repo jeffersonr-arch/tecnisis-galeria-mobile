@@ -31,6 +31,8 @@ import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudRoute
 import com.tecnisis.galeria.presentation.tasacion.PorTasarRoute
 import com.tecnisis.galeria.presentation.tasacion.PorTasarViewModel
 import com.tecnisis.galeria.presentation.tasacion.TasadasRoute
+import com.tecnisis.galeria.presentation.tasacion.TasarObraRoute
+import com.tecnisis.galeria.presentation.tasacion.TasarObraViewModel
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.evaluacion.DetalleObraAsignadaRoute
@@ -237,13 +239,28 @@ fun GaleriaNavHost(
                     .getStateFlow<String?>(PorTasarViewModel.ARG_AVISO, null)
                     .collectAsState()
                 PorTasarRoute(
-                    onAbrir = { },   // abre Tasar obra
+                    onAbrir = { id -> navController.navigate("${Pantalla.TasarObra.name}/$id") },
                     aviso = aviso,
                     onAvisoMostrado = { entradaPorTasar.savedStateHandle[PorTasarViewModel.ARG_AVISO] = null }
                 )
             }
             composable(Pantalla.Tasadas.name) {
                 TasadasRoute()
+            }
+            composable(
+                route = "${Pantalla.TasarObra.name}/{${TasarObraViewModel.ARG_ID}}",
+                arguments = listOf(
+                    navArgument(TasarObraViewModel.ARG_ID) { type = NavType.StringType }
+                )
+            ) {
+                TasarObraRoute(
+                    onVolver = volver,
+                    onGuardada = { aviso ->
+                        // El aviso lo muestra Por tasar (la pantalla anterior) al volver
+                        navController.previousBackStackEntry?.savedStateHandle?.set(PorTasarViewModel.ARG_AVISO, aviso)
+                        navController.popBackStack()
+                    }
+                )
             }
         }
     }

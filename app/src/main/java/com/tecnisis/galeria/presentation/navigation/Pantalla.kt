@@ -20,7 +20,8 @@ enum class Pantalla {
     Postulacion, EstadoPostulacion, Bandeja, DetallePostulacion,
     Perfil, MisObras, RegistrarObra, SolicitudesObras, DetalleSolicitud, ObrasAsignadas, DetalleObraAsignada, Rechazos, PorTasar, Tasadas,
     DashboardSolicitudes, ProyeccionEconomica,
-    ObrasRechazadas
+    ObrasRechazadas,
+    TasarObra
 }
 
 /** Una tarjeta del inicio; si destino es null, la función llega en un sprint futuro. */
