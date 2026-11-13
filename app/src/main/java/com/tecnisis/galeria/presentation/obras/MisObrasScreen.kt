@@ -129,7 +129,8 @@ fun MisObrasRoute(
         onConfirmarEnvio = confirmarEnvio,
         onCancelarEnvio = viewModel::onCancelarEnvio,
         onVerDocumento = viewModel::onVerDocumento,
-        onVerDocumentoObra = viewModel::onVerDocumentoObra
+        onVerDocumentoObra = viewModel::onVerDocumentoObra,
+        onVerDocumentoVenta = viewModel::onVerDocumentoVenta
     )
 }
 
@@ -143,7 +144,8 @@ fun MisObrasScreen(
     onConfirmarEnvio: () -> Unit,
     onCancelarEnvio: () -> Unit,
     onVerDocumento: () -> Unit = {},
-    onVerDocumentoObra: (String) -> Unit = {}
+    onVerDocumentoObra: (String) -> Unit = {},
+    onVerDocumentoVenta: (String) -> Unit = {}
 ) {
     Box(
         Modifier
@@ -154,7 +156,7 @@ fun MisObrasScreen(
         when {
             uiState.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
             uiState.sinObras -> EstadoVacio(onRegistrar)
-            else -> ListaObras(uiState, onRegistrar, onAbrirObra, onEnviar, onVerDocumento, onVerDocumentoObra)
+            else -> ListaObras(uiState, onRegistrar, onAbrirObra, onEnviar, onVerDocumento, onVerDocumentoObra, onVerDocumentoVenta)
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
@@ -229,7 +231,8 @@ private fun ListaObras(
     onAbrirObra: (String) -> Unit,
     onEnviar: () -> Unit,
     onVerDocumento: () -> Unit,
-    onVerDocumentoObra: (String) -> Unit
+    onVerDocumentoObra: (String) -> Unit,
+    onVerDocumentoVenta: (String) -> Unit
 ) {
     val solicitud = uiState.solicitud ?: return
     val c = MaterialTheme.colorScheme
@@ -253,7 +256,8 @@ private fun ListaObras(
                     editable = solicitud.esEditable,
                     onClick = { onAbrirObra(obra.id) },
                     abriendoDocumento = uiState.abriendoObra == obra.id,
-                    onVerDocumento = { onVerDocumentoObra(obra.id) }
+                    onVerDocumento = { onVerDocumentoObra(obra.id) },
+                    onVerDocumentoVenta = { onVerDocumentoVenta(obra.id) }
                 )
             }
         }
@@ -430,7 +434,7 @@ private fun pasosEnviada(s: SolicitudExhibicion) = listOf(
 )
 
 @Composable
-private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: Boolean, onClick: () -> Unit, abriendoDocumento: Boolean = false, onVerDocumento: () -> Unit = {}) {
+private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: Boolean, onClick: () -> Unit, abriendoDocumento: Boolean = false, onVerDocumento: () -> Unit = {}, onVerDocumentoVenta: () -> Unit = {}) {
     val c = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
@@ -494,6 +498,20 @@ private fun TarjetaObra(obra: Obra, estadoSolicitud: EstadoSolicitud, editable: 
                     cargando = abriendoDocumento,
                     icono = Icons.Outlined.FileDownload,
                     fondo = c.surfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                )
+            }
+            // El documento de venta (copia del artista) de la obra lista para exhibición
+            if (obra.estado == EstadoObra.LISTA_EXHIBICION) {
+                FilaPdf(
+                    titulo = "Mi documento de venta",
+                    subtitulo = null,
+                    onClick = onVerDocumentoVenta,
+                    cargando = abriendoDocumento,
+                    icono = Icons.Outlined.FileDownload,
+                    fondo = c.surfaceVariant,
+                    selloFondo = c.tertiaryContainer,
+                    selloTexto = c.onTertiaryContainer,
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
                 )
             }
@@ -596,7 +614,7 @@ private fun obraEjemplo(
 
 private fun solicitudEvaluada(terminada: Boolean) = solicitudEjemplo(EstadoSolicitud.APROBADA).copy(
     obras = listOf(
-        obraEjemplo("1", "Mañana en Paracas", Tecnica.OLEO, 60.0, 80.0, subida = true, estado = EstadoObra.ACEPTADA,
+        obraEjemplo("1", "Mañana en Paracas", Tecnica.OLEO, 60.0, 80.0, subida = true, estado = if (terminada) EstadoObra.LISTA_EXHIBICION else EstadoObra.ACEPTADA,
             comentario = "Buena técnica y buen manejo de la luz. Cuidar el marco para la exhibición."),
         obraEjemplo("2", "Telar de Ocongate", Tecnica.TEXTIL, 120.0, 90.0, estado = EstadoObra.RECHAZADA,
             comentario = "Los bordes del tejido están deshilachados; no está en condiciones de exhibirse."),

@@ -19,6 +19,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'gerente';
     }
 
+    // HU10
+    function esEspecialistaVentas() {
+      return autenticado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'especialista_ventas';
+    }
+
     // HU06
     function esSocioActivo() {
       return autenticado() &&
@@ -88,11 +94,13 @@ service cloud.firestore {
     // HU08: el Especialista de Arte lee las obras que tienen su uid en expertoUid.
     // Su consulta debe llevar whereEqualTo("expertoUid", uid): si no, Firestore la rechaza.
     // HU09: el Gerente lee solo las rechazadas; su consulta debe llevar whereEqualTo("estado", "rechazada").
+    // HU10: el Especialista de Ventas lee solo las aceptadas; su consulta debe llevar whereEqualTo("estado", "aceptada").
     match /obras/{id} {
       allow read: if autenticado()
         && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion()
             || resource.data.expertoUid == request.auth.uid
-            || (resource.data.estado == 'rechazada' && esGerente()));
+            || (resource.data.estado == 'rechazada' && esGerente())
+            || (resource.data.estado == 'aceptada' && esEspecialistaVentas()));
       allow create: if esSocioActivo()
         && request.resource.data.id == id
         && request.resource.data.uid == request.auth.uid
@@ -125,6 +133,13 @@ service cloud.firestore {
         // la Cloud Function decidirSolicitud lo lee con permisos de administrador.
         match /tokens/{uid} {
           allow read, write: if esDueno(uid);
+        }
+
+        // HU10: documento de venta de cada obra. Solo lo escribe la Cloud Function registrarTasacion;
+        // el Especialista de Ventas lo lee (pestaña Tasadas). El Gerente lo leerá en la HU12.
+        match /documentos_venta/{obraId} {
+          allow read: if esEspecialistaVentas();
+          allow write: if false;
         }
 
   }

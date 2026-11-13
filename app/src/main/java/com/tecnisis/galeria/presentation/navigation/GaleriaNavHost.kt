@@ -28,6 +28,11 @@ import com.tecnisis.galeria.presentation.componentes.OpcionBarra
 import com.tecnisis.galeria.presentation.detalle.DetallePostulacionRoute
 import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudRoute
+import com.tecnisis.galeria.presentation.tasacion.PorTasarRoute
+import com.tecnisis.galeria.presentation.tasacion.PorTasarViewModel
+import com.tecnisis.galeria.presentation.tasacion.TasadasRoute
+import com.tecnisis.galeria.presentation.tasacion.TasarObraRoute
+import com.tecnisis.galeria.presentation.tasacion.TasarObraViewModel
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudViewModel
 import com.tecnisis.galeria.presentation.estado.EstadoPostulacionRoute
 import com.tecnisis.galeria.presentation.evaluacion.DetalleObraAsignadaRoute
@@ -121,7 +126,6 @@ fun GaleriaNavHost(
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
         ) {
-
             composable(Pantalla.Login.name) {
                 LoginRoute(
                     onLoginExitoso = { usuario ->
@@ -228,6 +232,35 @@ fun GaleriaNavHost(
             // Histórico de obras rechazadas del Gerente
             composable(Pantalla.ObrasRechazadas.name) {
                 ObrasRechazadasRoute(onVolver = volver)
+            }
+            // Pestañas del Especialista de Ventas. Tasar obra deja aquí el aviso "Tasación guardada…"
+            composable(Pantalla.PorTasar.name) { entradaPorTasar ->
+                val aviso by entradaPorTasar.savedStateHandle
+                    .getStateFlow<String?>(PorTasarViewModel.ARG_AVISO, null)
+                    .collectAsState()
+                PorTasarRoute(
+                    onAbrir = { id -> navController.navigate("${Pantalla.TasarObra.name}/$id") },
+                    aviso = aviso,
+                    onAvisoMostrado = { entradaPorTasar.savedStateHandle[PorTasarViewModel.ARG_AVISO] = null }
+                )
+            }
+            composable(Pantalla.Tasadas.name) {
+                TasadasRoute()
+            }
+            composable(
+                route = "${Pantalla.TasarObra.name}/{${TasarObraViewModel.ARG_ID}}",
+                arguments = listOf(
+                    navArgument(TasarObraViewModel.ARG_ID) { type = NavType.StringType }
+                )
+            ) {
+                TasarObraRoute(
+                    onVolver = volver,
+                    onGuardada = { aviso ->
+                        // El aviso lo muestra Por tasar (la pantalla anterior) al volver
+                        navController.previousBackStackEntry?.savedStateHandle?.set(PorTasarViewModel.ARG_AVISO, aviso)
+                        navController.popBackStack()
+                    }
+                )
             }
         }
     }

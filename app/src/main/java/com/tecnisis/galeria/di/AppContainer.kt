@@ -97,6 +97,15 @@ import com.tecnisis.galeria.domain.repository.DocumentoObraRepository
 import com.tecnisis.galeria.domain.repository.HistoricoRechazosRepository
 import com.tecnisis.galeria.domain.usecase.DescargarDocumentoObraUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarObrasRechazadasUseCase
+import com.tecnisis.galeria.data.repository.DocumentoVentaRepositoryImpl
+import com.tecnisis.galeria.data.repository.TasacionRepositoryImpl
+import com.tecnisis.galeria.domain.repository.DocumentoVentaRepository
+import com.tecnisis.galeria.domain.repository.TasacionRepository
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoVentaUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarObrasPorTasarUseCase
+import com.tecnisis.galeria.domain.usecase.ObservarObrasTasadasUseCase
+import com.tecnisis.galeria.domain.usecase.ObtenerObraPorTasarUseCase
+import com.tecnisis.galeria.domain.usecase.RegistrarTasacionUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -158,6 +167,12 @@ interface AppContainer {
     // Sprint 4 · HU09
     val descargarDocumentoObra: DescargarDocumentoObraUseCase
     val observarObrasRechazadas: ObservarObrasRechazadasUseCase
+    // Sprint 5 · HU10
+    val observarObrasPorTasar: ObservarObrasPorTasarUseCase
+    val observarObrasTasadas: ObservarObrasTasadasUseCase
+    val obtenerObraPorTasar: ObtenerObraPorTasarUseCase
+    val registrarTasacion: RegistrarTasacionUseCase
+    val descargarDocumentoVenta: DescargarDocumentoVentaUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -284,4 +299,14 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     private val historicoRechazosRepository: HistoricoRechazosRepository by lazy { HistoricoRechazosRepositoryImpl(db) }
     override val descargarDocumentoObra by lazy { DescargarDocumentoObraUseCase(documentoObraRepository) }
     override val observarObrasRechazadas by lazy { ObservarObrasRechazadasUseCase(historicoRechazosRepository) }
+    // HU10: tasación del Especialista de Ventas (Firestore + PDF + Storage + Cloud Function registrarTasacion)
+    private val tasacionRepository: TasacionRepository by lazy {
+        TasacionRepositoryImpl(contexto, auth, db, storage, functions, GeneradorPdf())
+    }
+    private val documentoVentaRepository: DocumentoVentaRepository by lazy { DocumentoVentaRepositoryImpl(contexto, storage) }
+    override val observarObrasPorTasar by lazy { ObservarObrasPorTasarUseCase(tasacionRepository) }
+    override val observarObrasTasadas by lazy { ObservarObrasTasadasUseCase(tasacionRepository) }
+    override val obtenerObraPorTasar by lazy { ObtenerObraPorTasarUseCase(tasacionRepository) }
+    override val registrarTasacion by lazy { RegistrarTasacionUseCase(tasacionRepository) }
+    override val descargarDocumentoVenta by lazy { DescargarDocumentoVentaUseCase(documentoVentaRepository) }
 }

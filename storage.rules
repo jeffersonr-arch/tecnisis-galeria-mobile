@@ -64,5 +64,30 @@ service firebase.storage {
         && request.resource.contentType == 'application/pdf';
     }
 
+    // HU10: documento de venta de cada obra en documentos_venta/{obraId}/archivo.pdf y artista.pdf.
+    // Solo consulta 2 documentos de Firestore (el límite): usuarios/{uid} y obras/{obraId}.
+    // Escribe el Especialista de Ventas mientras la obra sigue "aceptada" (antes de registrar la tasación).
+    // Lee el Especialista de Ventas; el socio, solo artista.pdf de su obra lista para exhibición.
+    match /documentos_venta/{obraId}/{archivo} {
+      function obra() {
+        return firestore.get(/databases/(default)/documents/obras/$(obraId)).data;
+      }
+      function rol() {
+        return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol;
+      }
+      allow read: if request.auth != null
+        && (rol() == 'especialista_ventas'
+            || (archivo == 'artista.pdf'
+                && obra().uid == request.auth.uid
+                && obra().estado == 'lista_exhibicion'));
+      allow write: if request.auth != null
+        && rol() == 'especialista_ventas'
+        && archivo in ['archivo.pdf', 'artista.pdf']
+        && obra().estado == 'aceptada'
+        && request.resource != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
+
   }
 }
