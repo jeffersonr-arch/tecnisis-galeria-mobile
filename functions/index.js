@@ -662,3 +662,109 @@ exports.registrarVeredicto = onCall(async (request) => {
   logger.info("Veredicto registrado", {obraId, estado: estadoNuevo, por: uid});
   return {estado: estadoNuevo};
 });
+
+// =====================================================================================
+// HU10: el Especialista de Ventas tasa una obra aceptada (callable, como registrarVeredicto)
+//   1) Sesión, rol especialista_ventas y datos: {obraId, pvpCentimos, porcentaje}.
+//      Vuelve a calcular los montos aquí: no confía en lo que calcula la app.
+//   2) Los 2 PDF del documento de venta deben estar en Storage antes de cambiar nada.
+//   3) En una transacción: que la obra siga "aceptada"; crea documentos_venta/{obraId} y la pasa a "lista_exhibicion".
+//   4) Avisa al socio con FCM (mensaje de datos tipo "tasacion").
+// =====================================================================================
+const PVP_MAXIMO_CENTIMOS = 100000000; // S/ 1,000,000.00, igual que PVP_MAXIMO_CENTIMOS en la app
+const PORCENTAJE_MAXIMO = 100;
+
+// galería = PVP × % ÷ 100 redondeado a 2 decimales (0,005 sube); socio = PVP − galería. Igual que calcularMontos
+function calcularMontos(pvpCentimos, porcentaje) {
+  const galeria = Math.floor((pvpCentimos * porcentaje + 50) / 100);
+  return {montoGaleriaCentimos: galeria, montoSocioCentimos: pvpCentimos - galeria};
+}
+
+exports.registrarTasacion = onCall(async (request) => {
+  // 1) Sesión y rol
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Debes iniciar sesión");
+  }
+  const uid = request.auth.uid;
+  const usuario = await db.doc(`usuarios/${uid}`).get();
+  if (!usuario.exists || usuario.get("rol") !== "especialista_ventas") {
+    throw new HttpsError("permission-denied", "Solo el Especialista de Ventas puede tasar obras");
+  }
+
+  // Datos que manda la app
+  const datos = request.data || {};
+  const obraId = typeof datos.obraId === "string" ? datos.obraId : "";
+  const pvpCentimos = Number(datos.pvpCentimos);
+  const porcentaje = Number(datos.porcentaje);
+  if (obraId === "") {
+    throw new HttpsError("invalid-argument", "Falta el id de la obra");
+  }
+  if (!Number.isInteger(pvpCentimos) || pvpCentimos < 1 || pvpCentimos > PVP_MAXIMO_CENTIMOS) {
+    throw new HttpsError("invalid-argument", "El PVP debe ser mayor a 0 y como máximo S/ 1,000,000.00");
+  }
+  if (!Number.isInteger(porcentaje) || porcentaje < 0 || porcentaje > PORCENTAJE_MAXIMO) {
+    throw new HttpsError("invalid-argument", "El porcentaje debe ser un entero de 0 a 100");
+  }
+  const montos = calcularMontos(pvpCentimos, porcentaje);
+
+  // 2) Los 2 PDF deben estar en Storage antes de cambiar nada
+  const bucket = getStorage().bucket();
+  for (const copia of COPIAS) {
+    const [existe] = await bucket.file(`documentos_venta/${obraId}/${copia}`).exists();
+    if (!existe) {
+      throw noCumple("Faltan los documentos de venta de la obra", "faltan_documentos");
+    }
+  }
+
+  // 3) Todo junto o nada: el documento de venta y el estado de la obra
+  const refObra = db.doc(`obras/${obraId}`);
+  const refVenta = db.doc(`documentos_venta/${obraId}`);
+  const nombre = usuario.get("nombre") || "";
+  const resultado = await db.runTransaction(async (tx) => {
+    const obra = await tx.get(refObra);
+    if (!obra.exists) {
+      throw new HttpsError("not-found", "La obra no existe");
+    }
+    if (obra.get("estado") !== "aceptada") {
+      throw noCumple("La obra ya no está por tasar", "ya_tasada");
+    }
+    tx.set(refVenta, {
+      obraId,
+      solicitudId: obra.get("solicitudId") || "",
+      uid: obra.get("uid") || "",
+      nombreSocio: obra.get("nombreSocio") || null,
+      numeroSocio: obra.get("numeroSocio") || null,
+      titulo: obra.get("titulo") || "",
+      tecnica: obra.get("tecnica") || "",
+      fotoRuta: obra.get("fotoRuta") || "",
+      pvpCentimos,
+      porcentaje,
+      montoGaleriaCentimos: montos.montoGaleriaCentimos,
+      montoSocioCentimos: montos.montoSocioCentimos,
+      tasadaPor: uid,
+      tasadaPorNombre: nombre === "" ? "Especialista de Ventas" : nombre,
+      fechaTasacion: FieldValue.serverTimestamp(),
+    });
+    tx.update(refObra, {
+      estado: "lista_exhibicion",
+      fechaTasacion: FieldValue.serverTimestamp(),
+      tasadaPor: uid,
+    });
+    return {
+      uidSocio: obra.get("uid"),
+      solicitudId: obra.get("solicitudId") || "",
+      titulo: obra.get("titulo") || "",
+    };
+  });
+
+  // 4) Aviso al socio. Si falla, la tasación ya quedó guardada
+  await enviarAviso(resultado.uidSocio, {
+    tipo: "tasacion",
+    obraId,
+    solicitudId: resultado.solicitudId,
+    estado: "lista_exhibicion",
+    titulo: resultado.titulo,
+  });
+  logger.info("Tasación registrada", {obraId, pvpCentimos, porcentaje, por: uid});
+  return {pvpCentimos, porcentaje, ...montos};
+});
