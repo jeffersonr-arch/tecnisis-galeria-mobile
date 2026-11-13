@@ -11,6 +11,7 @@ import com.tecnisis.galeria.domain.model.ObraError
 import com.tecnisis.galeria.domain.model.CopiaDocumento
 import com.tecnisis.galeria.domain.model.DecisionError
 import com.tecnisis.galeria.domain.usecase.DescargarDocumentoUseCase
+import com.tecnisis.galeria.domain.usecase.DescargarDocumentoVentaUseCase
 import com.tecnisis.galeria.domain.usecase.EnviarSolicitudUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarConexionUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarMiSolicitudUseCase
@@ -38,7 +39,8 @@ class MisObrasViewModel(
     observarConexion: ObservarConexionUseCase,
     private val enviarSolicitud: EnviarSolicitudUseCase,
     private val descargarDocumento: DescargarDocumentoUseCase,
-    private val descargarDocumentoObra: DescargarDocumentoObraUseCase
+    private val descargarDocumentoObra: DescargarDocumentoObraUseCase,
+    private val descargarDocumentoVenta: DescargarDocumentoVentaUseCase
 ) : ViewModel() {
 
     private val local = MutableStateFlow(EstadoLocal())
@@ -102,6 +104,25 @@ class MisObrasViewModel(
         }
     }
 
+    /** Descarga la copia del artista del documento de venta de una obra lista para exhibición. */
+    fun onVerDocumentoVenta(obraId: String) {
+        if (local.value.abriendoObra != null) return
+        viewModelScope.launch {
+            local.update { it.copy(abriendoObra = obraId) }
+            descargarDocumentoVenta(obraId, CopiaDocumento.ARTISTA)
+                .onSuccess { ruta -> local.update { it.copy(pdfParaAbrir = ruta) } }
+                .onFailure { e -> local.update { it.copy(mensaje = mensajeDocumentoVenta(e)) } }
+            local.update { it.copy(abriendoObra = null) }
+        }
+    }
+
+    private fun mensajeDocumentoVenta(error: Throwable): String = when (error) {
+        DecisionError.NoEncontrada -> "Tu documento de venta todavía no está disponible"
+        DecisionError.SinConexion -> "Necesitas internet para descargar tu documento"
+        DecisionError.SinPermiso -> "Tu documento todavía no está disponible. Inténtalo en unos minutos"
+        else -> "No se pudo abrir tu documento. Inténtalo de nuevo"
+    }
+
     /** Si el archivo no existe, la obra se rechazó antes de que existiera el documento. */
     private fun mensajeDocumentoObra(error: Throwable): String = when (error) {
         DecisionError.NoEncontrada -> "Esta obra se rechazó antes de que existiera el documento"
@@ -137,7 +158,8 @@ class MisObrasViewModel(
                     container.observarConexion,
                     container.enviarSolicitud,
                     container.descargarDocumento,
-                    container.descargarDocumentoObra
+                    container.descargarDocumentoObra,
+                    container.descargarDocumentoVenta
                 )
             }
         }
