@@ -39,7 +39,9 @@ fun FilaPdf(
     modifier: Modifier = Modifier,
     cargando: Boolean = false,
     icono: ImageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-    fondo: Color = MaterialTheme.colorScheme.surfaceContainerLowest
+    fondo: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    selloFondo: Color = MaterialTheme.colorScheme.errorContainer,
+    selloTexto: Color = MaterialTheme.colorScheme.onErrorContainer
 ) {
     val c = MaterialTheme.colorScheme
     Surface(
@@ -56,9 +58,9 @@ fun FilaPdf(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Surface(color = c.errorContainer, shape = MaterialTheme.shapes.small, modifier = Modifier.size(width = 36.dp, height = 40.dp)) {
+            Surface(color = selloFondo, shape = MaterialTheme.shapes.small, modifier = Modifier.size(width = 36.dp, height = 40.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("PDF", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = c.onErrorContainer)
+                    Text("PDF", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = selloTexto)
                 }
             }
             Column(Modifier.weight(1f)) {
@@ -87,7 +89,9 @@ private fun FilaPdfPreview() {
                 FilaPdf("Copia · Artista", "artista.pdf", onClick = {}, cargando = true)
                 FilaPdf(
                     "Mi documento de aprobación", null, onClick = {},
-                    icono = Icons.Outlined.FileDownload, fondo = MaterialTheme.colorScheme.surfaceVariant
+                    icono = Icons.Outlined.FileDownload, fondo = MaterialTheme.colorScheme.surfaceVariant,
+                    selloFondo = MaterialTheme.colorScheme.tertiaryContainer,
+                    selloTexto = MaterialTheme.colorScheme.onTertiaryContainer
                 )
             }
         }
