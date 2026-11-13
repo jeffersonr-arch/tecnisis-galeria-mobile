@@ -18,6 +18,8 @@ import com.tecnisis.galeria.R
 import com.tecnisis.galeria.domain.model.AvisoDecision
 import com.tecnisis.galeria.domain.model.EXTRA_ABRIR_MIS_OBRAS
 import com.tecnisis.galeria.domain.model.avisoDecision
+import com.tecnisis.galeria.domain.model.avisoTasacion
+import com.tecnisis.galeria.domain.model.idAvisoTasacion
 import com.tecnisis.galeria.domain.model.avisoVeredicto
 import com.tecnisis.galeria.domain.model.idAvisoVeredicto
 
@@ -25,6 +27,7 @@ import com.tecnisis.galeria.domain.model.idAvisoVeredicto
  * HU07: recibe los mensajes de Firebase Cloud Messaging. La Cloud Function manda un mensaje de "datos"
  * (no de notificación): así este código corre siempre, con la app abierta o cerrada.
  * HU08: también llega "veredicto" (una obra aceptada o rechazada), con una notificación por obra.
+ * HU10: y "tasacion" (la obra quedó lista para exhibición), también una por obra.
  */
 class MensajeriaService : FirebaseMessagingService() {
 
@@ -44,6 +47,10 @@ class MensajeriaService : FirebaseMessagingService() {
             "veredicto" -> {
                 aviso = avisoVeredicto(datos["estado"] == "aceptada", datos["titulo"].orEmpty())
                 idNotificacion = idAvisoVeredicto(datos["obraId"].orEmpty()) // uno por obra: no se reemplazan
+            }
+            "tasacion" -> { // HU10: el Especialista de Ventas tasó la obra
+                aviso = avisoTasacion(datos["titulo"].orEmpty())
+                idNotificacion = idAvisoTasacion(datos["obraId"].orEmpty())
             }
             else -> return
         }

@@ -12,6 +12,8 @@ import android.text.TextUtils
 import com.tecnisis.galeria.domain.model.CopiaDocumento
 import com.tecnisis.galeria.domain.model.DocumentoRechazoObra
 import com.tecnisis.galeria.domain.model.DocumentoSolicitud
+import com.tecnisis.galeria.domain.model.DocumentoVenta
+import com.tecnisis.galeria.domain.model.textoSoles
 import com.tecnisis.galeria.domain.model.EstadoObra
 import com.tecnisis.galeria.domain.model.TipoDecision
 import java.io.File
@@ -222,6 +224,107 @@ class GeneradorPdf {
         canvas.drawText("Página 1 de 1", DERECHA, 829f, derecha)
     }
 
+    // ---------- HU10: documento de venta de una obra ----------
+
+    /** HU10: escribe en [destino] el documento de venta de una obra. Las dos copias solo cambian la franja. */
+    fun generarVenta(documento: DocumentoVenta, copia: CopiaDocumento, destino: File) {
+        val pdf = PdfDocument()
+        try {
+            val pagina = pdf.startPage(PdfDocument.PageInfo.Builder(ANCHO, ALTO, 1).create())
+            dibujarVenta(pagina.canvas, documento, copia)
+            pdf.finishPage(pagina)
+            destino.parentFile?.mkdirs()
+            FileOutputStream(destino).use { pdf.writeTo(it) }
+        } finally {
+            pdf.close()
+        }
+    }
+
+    private fun dibujarVenta(canvas: Canvas, d: DocumentoVenta, copia: CopiaDocumento) {
+        val fecha = Date(d.fecha)
+
+        // 1) Franja esmeralda con la copia
+        canvas.drawRect(0f, 0f, ANCHO.toFloat(), 30f, relleno(ESMERALDA))
+        val franja = texto(8.5f, BLANCO, negrita = true).apply { letterSpacing = 0.14f; textAlign = Paint.Align.CENTER }
+        canvas.drawText(copia.etiqueta.uppercase(locale), ANCHO / 2f, 19f, franja)
+
+        // 2) Encabezado: logo, galería, número de la obra y fecha
+        dibujarLogo(canvas, MARGEN, 46f, 34f)
+        canvas.drawText("TECNISIS Galería", MARGEN + 44f, 62f, texto(14f, TINTA, negrita = true, serif = true))
+        canvas.drawText("Exposiciones de arte y cultura peruana", MARGEN + 44f, 76f, texto(9f, SUAVE))
+        val derecha = texto(9f, SUAVE).apply { textAlign = Paint.Align.RIGHT }
+        canvas.drawText("Obra N.° ${d.numero}", DERECHA, 60f, derecha)
+        canvas.drawText("Fecha: ${formatoFecha.format(fecha)} · ${formatoHora.format(fecha)}", DERECHA, 74f, derecha)
+
+        // 3) Título e introducción
+        canvas.drawLine(MARGEN, 100f, DERECHA, 100f, linea(TINTA, 2f))
+        var y = 112f
+        y += parrafo(canvas, d.tituloDocumento, MARGEN, y, ANCHO_UTIL, texto(17f, TINTA, negrita = true, serif = true)) + 6f
+        y += parrafo(canvas, d.introduccion, MARGEN, y, ANCHO_UTIL, texto(10f, TEXTO)) + 16f
+
+        // 4) Socio (solo nombre y número), solicitud y fecha de tasación
+        canvas.drawRoundRect(RectF(MARGEN, y, DERECHA, y + 76f), 8f, 8f, relleno(PAPEL))
+        dato(canvas, "Socio", d.nombreSocio, MARGEN + 16f, y + 20f)
+        dato(canvas, "N.° de socio", d.numeroSocio, MARGEN + 270f, y + 20f)
+        dato(canvas, "Solicitud N.°", d.numeroSolicitud, MARGEN + 16f, y + 52f)
+        dato(canvas, "Tasada el", formatoFecha.format(fecha), MARGEN + 270f, y + 52f)
+        y += 96f
+
+        // 5) Tabla con la obra (la columna Estado es más ancha: "Lista para exhibición")
+        val columnas = floatArrayOf(MARGEN, MARGEN + 22f, MARGEN + 202f, MARGEN + 292f, MARGEN + 382f)
+        val cabecera = texto(9f, SUAVE, negrita = true)
+        listOf("#", "Obra", "Técnica", "Medidas (cm)", "Estado")
+            .forEachIndexed { i, titulo -> canvas.drawText(titulo, columnas[i], y, cabecera) }
+        y += 7f
+        canvas.drawLine(MARGEN, y, DERECHA, y, linea(TINTA, 1.5f))
+        y += 18f
+        listOf("1", d.titulo, d.tecnica, d.medidas, EstadoObra.LISTA_EXHIBICION.etiqueta).forEachIndexed { i, valor ->
+            val ancho = (if (i < columnas.size - 1) columnas[i + 1] else DERECHA) - columnas[i] - 8f
+            val pintura = texto(10f, TINTA, negrita = i == 1)
+            canvas.drawText(recortar(valor, pintura, ancho), columnas[i], y, pintura)
+        }
+        y += 9f
+        canvas.drawLine(MARGEN, y, DERECHA, y, linea(LINEA, 1f))
+
+        // 6) Montos de la tasación, en un recuadro esmeralda
+        y += 20f
+        canvas.drawRoundRect(RectF(MARGEN, y, DERECHA, y + 112f), 8f, 8f, linea(ESMERALDA, 1.5f))
+        val etiqueta = texto(9f, ESMERALDA_TEXTO, negrita = true).apply { letterSpacing = 0.08f }
+        canvas.drawText("MONTOS DE LA TASACIÓN", MARGEN + 16f, y + 20f, etiqueta)
+        val filas = listOf(
+            "Precio de venta al público (PVP)" to textoSoles(d.montos.pvpCentimos),
+            d.etiquetaGaleria to textoSoles(d.montos.galeriaCentimos),
+            "Monto neto para el socio" to textoSoles(d.montos.socioCentimos)
+        )
+        var yFila = y + 44f
+        filas.forEachIndexed { i, (rotulo, valor) ->
+            val ultima = i == filas.lastIndex
+            val izquierda = texto(if (ultima) 11.5f else 10.5f, TINTA, negrita = ultima)
+            val monto = texto(if (ultima) 11.5f else 10.5f, if (ultima) ESMERALDA_TEXTO else TINTA, negrita = true)
+                .apply { textAlign = Paint.Align.RIGHT }
+            canvas.drawText(rotulo, MARGEN + 16f, yFila, izquierda)
+            canvas.drawText(valor, DERECHA - 16f, yFila, monto)
+            if (!ultima) canvas.drawLine(MARGEN + 16f, yFila + 9f, DERECHA - 16f, yFila + 9f, linea(LINEA, 1f))
+            yFila += 26f
+        }
+
+        // 7) Quién tasó y firma
+        val pie = texto(9.5f, TEXTO)
+        canvas.drawText(d.firmante, MARGEN, 752f, pie)
+        canvas.drawText(
+            "Tasación registrada en TECNISIS Mobile el ${formatoFecha.format(fecha)} a las ${formatoHora.format(fecha)}.",
+            MARGEN, 766f, pie
+        )
+        canvas.drawLine(DERECHA - 170f, 752f, DERECHA, 752f, linea(TINTA, 1f))
+        val firma = texto(9f, SUAVE).apply { textAlign = Paint.Align.CENTER }
+        canvas.drawText("Firma del Especialista de Ventas", DERECHA - 85f, 766f, firma)
+
+        // 8) Pie de página
+        canvas.drawLine(0f, 808f, ANCHO.toFloat(), 808f, linea(LINEA, 1f))
+        canvas.drawText("Documento generado por TECNISIS Mobile", MARGEN, 829f, texto(9f, SUAVE))
+        canvas.drawText("Página 1 de 1", DERECHA, 829f, derecha)
+    }
+
     /** El logo "Marco con pigmentos": marco claro con borde oscuro y tres círculos (cobalto, cadmio, bermellón). */
     private fun dibujarLogo(canvas: Canvas, x: Float, y: Float, lado: Float) {
         val e = lado / 36f
@@ -295,5 +398,7 @@ class GeneradorPdf {
         const val PAPEL = 0xFFF6F2EA.toInt()
         const val LINEA = 0xFFE4DDD0.toInt()
         const val BLANCO = 0xFFFFFFFF.toInt()
+        const val ESMERALDA = 0xFF1F7A5C.toInt()       // HU10: franja y recuadro del documento de venta
+        const val ESMERALDA_TEXTO = 0xFF17664B.toInt()
     }
 }
