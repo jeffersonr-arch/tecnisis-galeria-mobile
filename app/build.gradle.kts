@@ -86,4 +86,5 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.mlkit.image.labeling) // HU08: etiquetas de la foto en el celular (modelo incluido)
+    implementation(libs.mpandroidchart) // HU11: dona del dashboard
 }

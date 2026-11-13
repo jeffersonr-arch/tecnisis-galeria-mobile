@@ -19,6 +19,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // HU11: MPAndroidChart solo está en JitPack
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.PhilJay") }
+        }
     }
 }
 
