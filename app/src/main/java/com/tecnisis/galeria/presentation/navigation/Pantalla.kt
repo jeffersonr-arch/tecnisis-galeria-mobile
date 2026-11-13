@@ -58,7 +58,7 @@ fun Rol.funciones(): List<FuncionRol> = when (this) {
         FuncionRol("Obras asignadas para evaluar", Pantalla.ObrasAsignadas, "Revisa cada obra y registra tu veredicto",Icons.AutoMirrored.Outlined.FactCheck)
     )
     Rol.ESPECIALISTA_VENTAS -> listOf(
-        FuncionRol("Obras pendientes de tasación", null, "Llega en el Sprint 5 (HU10)", Icons.Outlined.Sell)
+        FuncionRol("Obras pendientes de tasación", Pantalla.PorTasar, "Define el precio y la ganancia de la galería", Icons.Outlined.Sell)
     )
     Rol.GERENTE -> listOf(
         FuncionRol("Obras rechazadas", Pantalla.ObrasRechazadas, "Histórico con el motivo y su documento", Icons.Outlined.Block),
