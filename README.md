@@ -87,6 +87,16 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - Reglas de Storage con `firestore.get()`: escribe el Especialista de la obra; leen el Anfitrión, el Gerente y el Especialista; el socio solo su copia
 - Pruebas unitarias del documento y del histórico
 
+## Sprint 5 — Evaluación económica
+
+### HU10: Tasación y márgenes de venta
+- Pestañas Por tasar (obras aceptadas, la de veredicto más antiguo primero) y Tasadas del Especialista de Ventas, en tiempo real
+- Tasación con PVP (mayor a 0 y hasta S/ 1,000,000.00, coma o punto con 2 decimales) y porcentaje de ganancia de la galería (entero de 0 a 100), con cálculo en vivo del monto neto para el socio; montos en céntimos y redondeo a 2 decimales
+- Documento de venta por duplicado generado en el celular con PdfDocument (copia del archivo de la galería y copia del artista) y subido a Firebase Storage antes de guardar
+- Cloud Function `registrarTasacion`: valida el rol, recalcula los montos, revisa que existan los 2 PDF y, en una transacción, crea el Documento de Venta (`documentos_venta`) y pasa la obra a "Lista para exhibición"
+- Notificación al socio (FCM) y "Mi documento de venta" en Mis obras (su copia)
+- Reglas: Ventas lee solo las obras aceptadas y los documentos de venta; el socio solo su copia
+- Pruebas unitarias de las reglas de la tasación, del documento y de los casos de uso
 
 ## Tecnologías
 Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument, Google ML Kit Image Labeling
