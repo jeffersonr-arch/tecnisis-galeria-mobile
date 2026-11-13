@@ -35,3 +35,13 @@ fun avisoVeredicto(aceptada: Boolean, tituloObra: String): AvisoDecision {
  * Siempre es 3000 o más: no choca con el aviso de la decisión de la solicitud (2001).
  */
 fun idAvisoVeredicto(obraId: String): Int = 3_000 + obraId.hashCode().mod(1_000_000)
+
+
+/** HU10: título y texto de la notificación que recibe el socio cuando el Especialista de Ventas tasa su obra. */
+fun avisoTasacion(tituloObra: String): AvisoDecision {
+    val obra = if (tituloObra.isBlank()) "Tu obra" else "Tu obra «$tituloObra»"
+    return AvisoDecision("$obra está lista para exhibición", "Toca para ver tu documento de venta.")
+}
+
+/** HU10: un id distinto por obra, siempre 2 000 000 o más: no choca con los avisos del veredicto (3000 a 1 002 999). */
+fun idAvisoTasacion(obraId: String): Int = 2_000_000 + obraId.hashCode().mod(1_000_000)
