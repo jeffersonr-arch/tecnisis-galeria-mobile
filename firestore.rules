@@ -93,13 +93,14 @@ service cloud.firestore {
     }
     // HU08: el Especialista de Arte lee las obras que tienen su uid en expertoUid.
     // Su consulta debe llevar whereEqualTo("expertoUid", uid): si no, Firestore la rechaza.
-    // HU09: el Gerente lee solo las rechazadas; su consulta debe llevar whereEqualTo("estado", "rechazada").
+    // HU09 + HU11: el Gerente lee las rechazadas (histórico) y las aceptadas y listas para exhibición (dashboard).
+    // Su consulta debe llevar whereEqualTo("estado", "rechazada") o whereIn("estado", [...]) con esos estados.
     // HU10: el Especialista de Ventas lee solo las aceptadas; su consulta debe llevar whereEqualTo("estado", "aceptada").
     match /obras/{id} {
       allow read: if autenticado()
         && (resource == null || resource.data.uid == request.auth.uid || esAnfitrion()
             || resource.data.expertoUid == request.auth.uid
-            || (resource.data.estado == 'rechazada' && esGerente())
+            || (resource.data.estado in ['aceptada', 'lista_exhibicion', 'rechazada'] && esGerente())
             || (resource.data.estado == 'aceptada' && esEspecialistaVentas()));
       allow create: if esSocioActivo()
         && request.resource.data.id == id
@@ -119,7 +120,7 @@ service cloud.firestore {
         // HU07: Expertos (Especialistas de Arte). Los crea el script sembrarExpertos; la carga la cambia
         // la Cloud Function al aprobar (Parte 2). El Anfitrión los lee para elegir; cada Experto, el suyo.
         match /expertos/{uid} {
-          allow read: if esAnfitrion() || esDueno(uid);
+          allow read: if esAnfitrion() || esGerente() || esDueno(uid); // HU11: el Gerente, para el ranking
           allow write: if false;
         }
         // HU07: embeddings de Expertos y obras. Solo los usa la función analizarSolicitud (admin).
