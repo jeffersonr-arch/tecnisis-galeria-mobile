@@ -63,7 +63,7 @@ fun Rol.funciones(): List<FuncionRol> = when (this) {
     )
     Rol.GERENTE -> listOf(
         FuncionRol("Obras rechazadas", Pantalla.ObrasRechazadas, "Histórico con el motivo y su documento", Icons.Outlined.Block),
-        FuncionRol("Dashboard de solicitudes", null, "Llega en el Sprint 6 (HU11)", Icons.Outlined.DonutLarge),
+        FuncionRol("Dashboard de solicitudes", Pantalla.DashboardSolicitudes, "Aceptadas, rechazadas y carga de los Expertos", Icons.Outlined.DonutLarge),
         FuncionRol("Proyección económica", null, "Llega en el Sprint 6 (HU12)", Icons.Outlined.BarChart)
     )
 }
