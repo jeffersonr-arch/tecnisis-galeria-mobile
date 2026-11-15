@@ -106,6 +106,9 @@ import com.tecnisis.galeria.domain.usecase.ObservarObrasPorTasarUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarObrasTasadasUseCase
 import com.tecnisis.galeria.domain.usecase.ObtenerObraPorTasarUseCase
 import com.tecnisis.galeria.domain.usecase.RegistrarTasacionUseCase
+import com.tecnisis.galeria.data.repository.DashboardRepositoryImpl
+import com.tecnisis.galeria.domain.repository.DashboardRepository
+import com.tecnisis.galeria.domain.usecase.ObservarDashboardUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -173,6 +176,8 @@ interface AppContainer {
     val obtenerObraPorTasar: ObtenerObraPorTasarUseCase
     val registrarTasacion: RegistrarTasacionUseCase
     val descargarDocumentoVenta: DescargarDocumentoVentaUseCase
+    // Sprint 6 · HU11
+    val observarDashboard: ObservarDashboardUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -309,4 +314,7 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val obtenerObraPorTasar by lazy { ObtenerObraPorTasarUseCase(tasacionRepository) }
     override val registrarTasacion by lazy { RegistrarTasacionUseCase(tasacionRepository) }
     override val descargarDocumentoVenta by lazy { DescargarDocumentoVentaUseCase(documentoVentaRepository) }
+    // HU11: dashboard de solicitudes del Gerente (Firestore en tiempo real)
+    private val dashboardRepository: DashboardRepository by lazy { DashboardRepositoryImpl(db) }
+    override val observarDashboard by lazy { ObservarDashboardUseCase(dashboardRepository) }
 }
