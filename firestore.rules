@@ -137,9 +137,9 @@ service cloud.firestore {
         }
 
         // HU10: documento de venta de cada obra. Solo lo escribe la Cloud Function registrarTasacion;
-        // el Especialista de Ventas lo lee (pestaña Tasadas). El Gerente lo leerá en la HU12.
+        // el Especialista de Ventas lo lee (pestaña Tasadas). HU12: el Gerente, para la proyección económica.
         match /documentos_venta/{obraId} {
-          allow read: if esEspecialistaVentas();
+          allow read: if esEspecialistaVentas() || esGerente();
           allow write: if false;
         }
 
