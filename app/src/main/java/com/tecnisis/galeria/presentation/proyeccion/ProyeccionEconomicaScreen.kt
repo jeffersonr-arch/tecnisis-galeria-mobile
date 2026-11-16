@@ -33,11 +33,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,6 +50,7 @@ import com.tecnisis.galeria.domain.model.ObraProyectada
 import com.tecnisis.galeria.domain.model.Tecnica
 import com.tecnisis.galeria.domain.model.calcularProyeccion
 import com.tecnisis.galeria.presentation.componentes.TarjetaGaleria
+import com.tecnisis.galeria.presentation.componentes.compartirArchivo
 import com.tecnisis.galeria.presentation.theme.TecnisisGaleriaTheme
 
 @Composable
@@ -55,6 +58,15 @@ fun ProyeccionEconomicaRoute(
     viewModel: ProyeccionViewModel = viewModel(factory = ProyeccionViewModel.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val contexto = LocalContext.current
+
+    // Archivo listo: menú Compartir de Android
+    LaunchedEffect(uiState.archivoParaCompartir) {
+        val archivo = uiState.archivoParaCompartir ?: return@LaunchedEffect
+        val abierto = compartirArchivo(contexto, archivo.ruta, archivo.formato.tipoMime, "Reporte de proyección económica")
+        viewModel.onCompartido(abierto)
+    }
+
     ProyeccionEconomicaScreen(
         uiState = uiState,
         onAgrupar = viewModel::onAgrupar,
