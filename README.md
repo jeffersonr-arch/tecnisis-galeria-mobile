@@ -109,6 +109,14 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - Reglas: el Gerente lee las obras aceptadas, listas para exhibición y rechazadas, y la colección de Expertos
 - Pruebas unitarias del cálculo del dashboard y de su caso de uso
 
+### HU12: Dashboard de proyección económica
+- Proyección del Gerente (pestaña Proyección y tarjeta del Panel), en tiempo real sobre los Documentos de Venta
+- Indicador del ingreso total proyectado (suma de la ganancia de la galería de todas las obras tasadas), con la cantidad de obras, el PVP total y lo que reciben los socios
+- Gráfico de barras horizontales con MPAndroidChart: ganancia de la galería por obra o por socio, de mayor a menor, máximo 10 barras («Otras» suma el resto)
+- Exportación del reporte en PDF (PdfDocument, una o varias hojas A4) y CSV (UTF-8, escrito en Kotlin), compartidos con el menú de Android
+- Reglas: el Gerente lee los Documentos de Venta
+- Pruebas unitarias del cálculo, la paginación del PDF, el CSV y los casos de uso
+
 ## Tecnologías
 Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument, Google ML Kit Image Labeling, MPAndroidChart
 
