@@ -28,6 +28,8 @@ import com.tecnisis.galeria.presentation.componentes.OpcionBarra
 import com.tecnisis.galeria.presentation.detalle.DetallePostulacionRoute
 import com.tecnisis.galeria.presentation.detalle.DetallePostulacionViewModel
 import com.tecnisis.galeria.presentation.detallesolicitud.DetalleSolicitudRoute
+import com.tecnisis.galeria.presentation.dashboard.DashboardSolicitudesRoute
+import com.tecnisis.galeria.presentation.proyeccion.ProyeccionEconomicaRoute
 import com.tecnisis.galeria.presentation.tasacion.PorTasarRoute
 import com.tecnisis.galeria.presentation.tasacion.PorTasarViewModel
 import com.tecnisis.galeria.presentation.tasacion.TasadasRoute
@@ -261,6 +263,14 @@ fun GaleriaNavHost(
                         navController.popBackStack()
                     }
                 )
+            }
+            // Dashboard de solicitudes del Gerente (pestaña Solicitudes y tarjeta del Panel)
+            composable(Pantalla.DashboardSolicitudes.name) {
+                DashboardSolicitudesRoute()
+            }
+            // Proyección económica del Gerente (pestaña Proyección y tarjeta del Panel)
+            composable(Pantalla.ProyeccionEconomica.name) {
+                ProyeccionEconomicaRoute()
             }
         }
     }

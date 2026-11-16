@@ -98,8 +98,27 @@ App Android de gestión de exposiciones de una galería de arte, con acceso por 
 - Reglas: Ventas lee solo las obras aceptadas y los documentos de venta; el socio solo su copia
 - Pruebas unitarias de las reglas de la tasación, del documento y de los casos de uso
 
+## Sprint 6 — Dashboards
+
+### HU11: Dashboard de solicitudes
+- Dashboard del Gerente (pestaña Solicitudes y tarjeta del Panel), en tiempo real
+- Gráfico de dona con MPAndroidChart: obras aceptadas (incluidas las listas para exhibición) y rechazadas, con porcentajes que suman 100
+- Filtros combinables: fecha del veredicto (7 días, 30 días, todo o un rango con el DateRangePicker de Material 3), técnica, socio y Experto
+- Ranking de Expertos con las obras evaluadas (según los filtros) y las pendientes ahora (carga)
+- Agregación en la app sobre una consulta en tiempo real de Firestore (whereIn por estado, sin índice compuesto)
+- Reglas: el Gerente lee las obras aceptadas, listas para exhibición y rechazadas, y la colección de Expertos
+- Pruebas unitarias del cálculo del dashboard y de su caso de uso
+
+### HU12: Dashboard de proyección económica
+- Proyección del Gerente (pestaña Proyección y tarjeta del Panel), en tiempo real sobre los Documentos de Venta
+- Indicador del ingreso total proyectado (suma de la ganancia de la galería de todas las obras tasadas), con la cantidad de obras, el PVP total y lo que reciben los socios
+- Gráfico de barras horizontales con MPAndroidChart: ganancia de la galería por obra o por socio, de mayor a menor, máximo 10 barras («Otras» suma el resto)
+- Exportación del reporte en PDF (PdfDocument, una o varias hojas A4) y CSV (UTF-8, escrito en Kotlin), compartidos con el menú de Android
+- Reglas: el Gerente lee los Documentos de Venta
+- Pruebas unitarias del cálculo, la paginación del PDF, el CSV y los casos de uso
+
 ## Tecnologías
-Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument, Google ML Kit Image Labeling
+Kotlin, Jetpack Compose, Material 3, Navigation Compose, Firebase Auth, Cloud Firestore, Cloud Functions (Node.js), Firebase Storage, Retrofit, corrutinas, WorkManager, Room (SQLite), DataStore, BiometricPrompt, SpeechRecognizer, FileProvider, Gemini API (Cloud Functions), Firebase Cloud Messaging, PdfDocument, Google ML Kit Image Labeling, MPAndroidChart
 
 ## Cómo ejecutar
 1. Clonar el repositorio y abrirlo en Android Studio.

@@ -106,6 +106,15 @@ import com.tecnisis.galeria.domain.usecase.ObservarObrasPorTasarUseCase
 import com.tecnisis.galeria.domain.usecase.ObservarObrasTasadasUseCase
 import com.tecnisis.galeria.domain.usecase.ObtenerObraPorTasarUseCase
 import com.tecnisis.galeria.domain.usecase.RegistrarTasacionUseCase
+import com.tecnisis.galeria.data.repository.DashboardRepositoryImpl
+import com.tecnisis.galeria.domain.repository.DashboardRepository
+import com.tecnisis.galeria.domain.usecase.ObservarDashboardUseCase
+import com.tecnisis.galeria.data.repository.ProyeccionRepositoryImpl
+import com.tecnisis.galeria.domain.repository.ProyeccionRepository
+import com.tecnisis.galeria.domain.usecase.ObservarProyeccionUseCase
+import com.tecnisis.galeria.data.repository.ReporteRepositoryImpl
+import com.tecnisis.galeria.domain.repository.ReporteRepository
+import com.tecnisis.galeria.domain.usecase.ExportarProyeccionUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -173,6 +182,11 @@ interface AppContainer {
     val obtenerObraPorTasar: ObtenerObraPorTasarUseCase
     val registrarTasacion: RegistrarTasacionUseCase
     val descargarDocumentoVenta: DescargarDocumentoVentaUseCase
+    // Sprint 6 · HU11
+    val observarDashboard: ObservarDashboardUseCase
+    // Sprint 6 · HU12
+    val observarProyeccion: ObservarProyeccionUseCase
+    val exportarProyeccion: ExportarProyeccionUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -309,4 +323,12 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     override val obtenerObraPorTasar by lazy { ObtenerObraPorTasarUseCase(tasacionRepository) }
     override val registrarTasacion by lazy { RegistrarTasacionUseCase(tasacionRepository) }
     override val descargarDocumentoVenta by lazy { DescargarDocumentoVentaUseCase(documentoVentaRepository) }
+    // HU11: dashboard de solicitudes del Gerente (Firestore en tiempo real)
+    private val dashboardRepository: DashboardRepository by lazy { DashboardRepositoryImpl(db) }
+    override val observarDashboard by lazy { ObservarDashboardUseCase(dashboardRepository) }
+    // HU12: proyección económica del Gerente (Firestore en tiempo real) y su reporte en PDF o CSV
+    private val proyeccionRepository: ProyeccionRepository by lazy { ProyeccionRepositoryImpl(db) }
+    override val observarProyeccion by lazy { ObservarProyeccionUseCase(proyeccionRepository) }
+    private val reporteRepository: ReporteRepository by lazy { ReporteRepositoryImpl(contexto, GeneradorPdf()) }
+    override val exportarProyeccion by lazy { ExportarProyeccionUseCase(reporteRepository) }
 }
