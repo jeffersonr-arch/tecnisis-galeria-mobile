@@ -112,6 +112,9 @@ import com.tecnisis.galeria.domain.usecase.ObservarDashboardUseCase
 import com.tecnisis.galeria.data.repository.ProyeccionRepositoryImpl
 import com.tecnisis.galeria.domain.repository.ProyeccionRepository
 import com.tecnisis.galeria.domain.usecase.ObservarProyeccionUseCase
+import com.tecnisis.galeria.data.repository.ReporteRepositoryImpl
+import com.tecnisis.galeria.domain.repository.ReporteRepository
+import com.tecnisis.galeria.domain.usecase.ExportarProyeccionUseCase
 
 interface AppContainer {
     // Sprint 1
@@ -183,6 +186,7 @@ interface AppContainer {
     val observarDashboard: ObservarDashboardUseCase
     // Sprint 6 · HU12
     val observarProyeccion: ObservarProyeccionUseCase
+    val exportarProyeccion: ExportarProyeccionUseCase
 }
 
 class DefaultAppContainer(private val contexto: Context) : AppContainer {
@@ -325,4 +329,6 @@ class DefaultAppContainer(private val contexto: Context) : AppContainer {
     // HU12: proyección económica del Gerente (Firestore en tiempo real) y su reporte en PDF o CSV
     private val proyeccionRepository: ProyeccionRepository by lazy { ProyeccionRepositoryImpl(db) }
     override val observarProyeccion by lazy { ObservarProyeccionUseCase(proyeccionRepository) }
+    private val reporteRepository: ReporteRepository by lazy { ReporteRepositoryImpl(contexto, GeneradorPdf()) }
+    override val exportarProyeccion by lazy { ExportarProyeccionUseCase(reporteRepository) }
 }

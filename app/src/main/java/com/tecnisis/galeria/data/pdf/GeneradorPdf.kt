@@ -13,6 +13,12 @@ import com.tecnisis.galeria.domain.model.CopiaDocumento
 import com.tecnisis.galeria.domain.model.DocumentoRechazoObra
 import com.tecnisis.galeria.domain.model.DocumentoSolicitud
 import com.tecnisis.galeria.domain.model.DocumentoVenta
+import com.tecnisis.galeria.domain.model.ProyeccionEconomica
+import com.tecnisis.galeria.domain.model.RENGLONES_CABECERA_TABLA
+import com.tecnisis.galeria.domain.model.TablaReporte
+import com.tecnisis.galeria.domain.model.TramoTabla
+import com.tecnisis.galeria.domain.model.paginarReporte
+import com.tecnisis.galeria.domain.model.textoGenerado
 import com.tecnisis.galeria.domain.model.textoSoles
 import com.tecnisis.galeria.domain.model.EstadoObra
 import com.tecnisis.galeria.domain.model.TipoDecision
@@ -21,6 +27,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 /**
  * HU07: dibuja el documento en una hoja A4 (595 × 842 puntos) con PdfDocument, la API de Android.
@@ -325,6 +332,123 @@ class GeneradorPdf {
         canvas.drawText("Página 1 de 1", DERECHA, 829f, derecha)
     }
 
+    // ---------- HU12: reporte de proyección económica (una o varias hojas A4) ----------
+
+    /** HU12: escribe en [destino] el reporte con el indicador y las tablas por obra y por socio. */
+    fun generarProyeccion(proyeccion: ProyeccionEconomica, generado: Long, zona: TimeZone, destino: File) {
+        val hojas = paginarReporte(proyeccion.obras.size, proyeccion.socios.size, RENGLONES_PRIMERA, RENGLONES_OTRAS)
+        val generadoTexto = textoGenerado(generado, zona)
+        val pdf = PdfDocument()
+        try {
+            hojas.forEachIndexed { indice, tramos ->
+                val pagina = pdf.startPage(PdfDocument.PageInfo.Builder(ANCHO, ALTO, indice + 1).create())
+                val canvas = pagina.canvas
+                var y = if (indice == 0) {
+                    encabezadoProyeccion(canvas, proyeccion, generadoTexto)
+                } else {
+                    encabezadoContinua(canvas, generadoTexto)
+                }
+                tramos.forEach { tramo ->
+                    tramoProyeccion(canvas, proyeccion, tramo, y)
+                    y += (RENGLONES_CABECERA_TABLA + tramo.filas + 1) * RENGLON
+                }
+                pieProyeccion(canvas, indice + 1, hojas.size)
+                pdf.finishPage(pagina)
+            }
+            destino.parentFile?.mkdirs()
+            FileOutputStream(destino).use { pdf.writeTo(it) }
+        } finally {
+            pdf.close()
+        }
+    }
+
+    /** Hoja 1: logo, título, fecha de generación y el recuadro del ingreso total. Devuelve dónde empiezan las tablas. */
+    private fun encabezadoProyeccion(canvas: Canvas, p: ProyeccionEconomica, generado: String): Float {
+        dibujarLogo(canvas, MARGEN, 36f, 34f)
+        val rotulo = texto(8.5f, SUAVE, negrita = true).apply { letterSpacing = 0.12f }
+        canvas.drawText("TECNISIS GALERÍA", MARGEN + 44f, 50f, rotulo)
+        canvas.drawText("Reporte de proyección económica", MARGEN + 44f, 68f, texto(16f, TINTA, negrita = true, serif = true))
+        canvas.drawText(generado, DERECHA, 50f, texto(9f, SUAVE).apply { textAlign = Paint.Align.RIGHT })
+        canvas.drawLine(MARGEN, 88f, DERECHA, 88f, linea(TINTA, 1.5f))
+
+        canvas.drawRoundRect(RectF(MARGEN, 102f, DERECHA, 166f), 6f, 6f, linea(ESMERALDA, 1.5f))
+        val etiqueta = texto(8.5f, ESMERALDA_TEXTO, negrita = true).apply { letterSpacing = 0.1f }
+        canvas.drawText("INGRESO TOTAL PROYECTADO", MARGEN + 14f, 118f, etiqueta)
+        canvas.drawText(textoSoles(p.totalGaleriaCentimos), MARGEN + 14f, 142f, texto(20f, TINTA, negrita = true, serif = true))
+        val resumen = texto(9f, SUAVE)
+        canvas.drawText(recortar(p.resumen, resumen, ANCHO_UTIL - 28f), MARGEN + 14f, 158f, resumen)
+        return INICIO_PRIMERA
+    }
+
+    /** Hojas 2 en adelante: una línea con el título y la fecha. */
+    private fun encabezadoContinua(canvas: Canvas, generado: String): Float {
+        canvas.drawText("Reporte de proyección económica", MARGEN, 44f, texto(11f, TINTA, negrita = true, serif = true))
+        canvas.drawText(generado, DERECHA, 44f, texto(9f, SUAVE).apply { textAlign = Paint.Align.RIGHT })
+        canvas.drawLine(MARGEN, 54f, DERECHA, 54f, linea(LINEA, 1f))
+        return INICIO_OTRAS
+    }
+
+    /** Un tramo de tabla: título, fila de cabecera (se repite en cada hoja) y sus filas. */
+    private fun tramoProyeccion(canvas: Canvas, p: ProyeccionEconomica, tramo: TramoTabla, arriba: Float) {
+        val porObra = tramo.tabla == TablaReporte.OBRAS
+        val titulo = (if (porObra) "Ganancia de la galería por obra" else "Ganancia de la galería por socio") +
+                if (tramo.desde > 0) " (continúa)" else ""
+        canvas.drawText(titulo, MARGEN, arriba + 12f, texto(10.5f, TINTA, negrita = true))
+
+        val columnas = if (porObra) COLUMNAS_OBRA else COLUMNAS_SOCIO
+        val cabeceraY = arriba + RENGLON
+        canvas.drawRect(MARGEN, cabeceraY, DERECHA, cabeceraY + RENGLON, relleno(ESMERALDA_VELO))
+        val cabecera = texto(8.5f, ESMERALDA_TEXTO, negrita = true)
+        val titulos = if (porObra) listOf("Obra", "Socio", "Técnica", "PVP", "%", "Galería", "Socio recibe")
+        else listOf("Socio", "Obras", "PVP", "Galería", "Socio recibe")
+        titulos.forEachIndexed { i, t -> celda(canvas, t, columnas, i, cabeceraY + 12f, cabecera) }
+
+        for (fila in tramo.desde until tramo.hasta) {
+            val yFila = cabeceraY + RENGLON * (fila - tramo.desde + 1)
+            val valores = if (porObra) {
+                val o = p.obras[fila]
+                listOf(
+                    o.titulo, o.socio, o.tecnica?.etiqueta ?: "—", textoSoles(o.pvpCentimos), "${o.porcentaje} %",
+                    textoSoles(o.montoGaleriaCentimos), textoSoles(o.montoSocioCentimos)
+                )
+            } else {
+                val s = p.socios[fila]
+                listOf(
+                    s.socio, "${s.obras}", textoSoles(s.pvpCentimos),
+                    textoSoles(s.gananciaCentimos), textoSoles(s.socioRecibeCentimos)
+                )
+            }
+            val indiceGaleria = if (porObra) 5 else 3
+            valores.forEachIndexed { i, v ->
+                celda(canvas, v, columnas, i, yFila + 12f, texto(8.5f, TINTA, negrita = i == indiceGaleria))
+            }
+            canvas.drawLine(MARGEN, yFila + RENGLON, DERECHA, yFila + RENGLON, linea(LINEA, 0.5f))
+        }
+    }
+
+    /**
+     * Una celda. [columnas]: pares (inicio, fin) desde el margen; las de texto van a la izquierda y se cortan con "…";
+     * las de números (las que tienen inicio negativo) van a la derecha de su fin.
+     */
+    private fun celda(canvas: Canvas, valor: String, columnas: List<Pair<Float, Float>>, i: Int, y: Float, pintura: TextPaint) {
+        val (inicio, fin) = columnas[i]
+        if (inicio < 0f) {
+            pintura.textAlign = Paint.Align.RIGHT
+            canvas.drawText(valor, MARGEN + fin - 4f, y, pintura)
+            pintura.textAlign = Paint.Align.LEFT
+        } else {
+            canvas.drawText(recortar(valor, pintura, fin - inicio - 8f), MARGEN + inicio + 4f, y, pintura)
+        }
+    }
+
+    private fun pieProyeccion(canvas: Canvas, pagina: Int, total: Int) {
+        canvas.drawLine(0f, 808f, ANCHO.toFloat(), 808f, linea(LINEA, 1f))
+        val pie = texto(8.5f, SUAVE)
+        canvas.drawText("Montos proyectados: obras listas para exhibición, todavía no vendidas.", MARGEN, 829f, pie)
+        canvas.drawText("Página $pagina de $total", DERECHA, 829f, texto(8.5f, SUAVE).apply { textAlign = Paint.Align.RIGHT })
+    }
+
+
     /** El logo "Marco con pigmentos": marco claro con borde oscuro y tres círculos (cobalto, cadmio, bermellón). */
     private fun dibujarLogo(canvas: Canvas, x: Float, y: Float, lado: Float) {
         val e = lado / 36f
@@ -400,5 +524,21 @@ class GeneradorPdf {
         const val BLANCO = 0xFFFFFFFF.toInt()
         const val ESMERALDA = 0xFF1F7A5C.toInt()       // HU10: franja y recuadro del documento de venta
         const val ESMERALDA_TEXTO = 0xFF17664B.toInt()
+        // HU12: reporte de proyección económica
+        const val ESMERALDA_VELO = 0xFFDDF0E7.toInt()   // fondo de la cabecera de las tablas
+        const val RENGLON = 17f                         // alto de cada fila de las tablas
+        const val INICIO_PRIMERA = 184f                 // donde empiezan las tablas en la hoja 1
+        const val INICIO_OTRAS = 70f                    // y en las demás
+        const val RENGLONES_PRIMERA = 35                // (790 − 184) ÷ 17
+        const val RENGLONES_OTRAS = 42                  // (790 − 70) ÷ 17
+
+        // Columnas (inicio, fin) desde el margen; inicio negativo = número alineado a la derecha de su fin
+        val COLUMNAS_OBRA = listOf(
+            0f to 118f, 118f to 238f, 238f to 300f,
+            -1f to 362f, -1f to 392f, -1f to 450f, -1f to ANCHO_UTIL
+        )
+        val COLUMNAS_SOCIO = listOf(
+            0f to 230f, -1f to 280f, -1f to 360f, -1f to 435f, -1f to ANCHO_UTIL
+        )
     }
 }
